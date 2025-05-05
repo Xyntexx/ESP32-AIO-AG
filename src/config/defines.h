@@ -9,10 +9,11 @@
 
 #define GPSSerial Serial2
 
-#define MAC_ADDR {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}
-#define IP_ADDR {192, 168, 178, 22}
-#define GW_ADDR {192, 168, 178, 1}
-#define SN_ADDR {255, 255, 255, 0}
-#define DNS_ADDR {8, 8, 8, 8}
+#define STATIC_IP_ADDR {192, 168, 5, 126}
+#define STATIC_GW_ADDR {192, 168, 5, 1}
+#define STATIC_SN_ADDR {255, 255, 255, 0}
+#define STATIC_DNS_ADDR {8, 8, 8, 8}
+
+#define USE_DHCP false
 
 #endif // DEFINES_H

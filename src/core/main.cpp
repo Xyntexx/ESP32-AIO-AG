@@ -1,5 +1,6 @@
 #include "../config/defines.h"
 #include "../utils/log.h"
+#include "network/ethernet.h"
 
 void setup() {
   // Initialize basic logging first
@@ -16,10 +17,8 @@ void setup() {
   //restoreSettings();
   //debug("Settings loaded");
 
-  //TODO: add ethernet
-  // Initialize ethernet
-  //initializeEthernet();
-  //debug("Ethernet initialized");
+  initializeEthernet();
+  debug("Ethernet initialized");
 
   // Initialize UDP logging after Ethernet is up
   //initUDPLogging();
