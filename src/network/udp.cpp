@@ -5,6 +5,10 @@
 AsyncUDP async_udp;
 static void (*udpReceiveCallback)(AsyncUDPPacket packet) = nullptr;
 
+// Variables to store the last sender's info
+static IPAddress last_sender_ip(0, 0, 0, 0);
+static uint16_t last_sender_port = 0;
+
 // Initialize AsyncUDP
 bool initUDP(uint16_t listeningPort) {
     if (async_udp.listen(listeningPort)) {
@@ -48,8 +52,26 @@ bool broadcastUDPPacket(uint16_t remotePort, const uint8_t* data, size_t len) {
     return async_udp.broadcastTo(message, remotePort) > 0;
 }
 
-// Set callback function for when UDP data is received
+// Get last sender's IP address
+IPAddress getLastSenderIP() {
+    return last_sender_ip;
+}
+
+// Get last sender's port
+uint16_t getLastSenderPort() {
+    return last_sender_port;
+}
+
+// Update the setUDPReceiveCallback function to also store sender information
 void setUDPReceiveCallback(void (*callback)(AsyncUDPPacket packet)) {
-    udpReceiveCallback = callback;
+    // Set the callback that also captures sender information
+    async_udp.onPacket([callback](AsyncUDPPacket packet) {
+        // Store sender information
+        last_sender_ip = packet.remoteIP();
+        last_sender_port = packet.remotePort();
+        
+        // Call the actual callback
+        callback(packet);
+    });
 }
 

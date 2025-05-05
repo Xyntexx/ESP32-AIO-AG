@@ -74,6 +74,12 @@ uint8_t get_wheel_angle_sensor_raw() {
     return static_cast<uint8_t>(get_raw_steering_position() & 0xFF);
 }
 
+// Implementation of get_wheel_angle_sensor_counts
+uint16_t get_wheel_angle_sensor_counts() {
+    // Return the raw steering position as counts
+    return static_cast<uint16_t>(get_raw_steering_position());
+}
+
 void init() {
     if (Set.wasType == WASType::ADS_1115_single || Set.wasType == WASType::ADS_1115_diff) {
         debug("Initializing ADS1115 WAS");

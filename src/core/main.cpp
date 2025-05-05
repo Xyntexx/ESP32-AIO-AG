@@ -2,6 +2,7 @@
 #include "../utils/log.h"
 #include "network/ethernet.h"
 #include "autosteer/autosteer.h"
+#include "WebServer_ESP32_SC_W6100.h"
 
 void setup() {
   // Initialize basic logging first

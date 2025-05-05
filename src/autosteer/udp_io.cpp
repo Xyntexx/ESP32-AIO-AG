@@ -7,6 +7,7 @@
 #include "buttons.h"
 #include "autosteer.h"
 #include "motor.h"
+#include <WiFi.h>
 
 // Global variables
 bool newDataFromAOG = false;
@@ -75,6 +76,48 @@ AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue) {
     // Calculate CRC (skipping header, pgn, and length)
     uint8_t* payload = reinterpret_cast<uint8_t*>(&packet) + 3; // Skip header, pgn, length
     packet.crc = calculateCRC(payload, PAYLOAD_LENGTH);
+    
+    return packet;
+}
+
+// Create HelloReply packet
+HelloReplyPacket createHelloReplyPacket(float actualSteerAngle, uint16_t sensorCounts, bool switchStatus) {
+    HelloReplyPacket packet;
+    
+    // Convert float angle to 16-bit integer (angle * 100)
+    uint16_t angle = static_cast<uint16_t>(actualSteerAngle * 100.0f);
+    
+    // Fill in the data
+    packet.angleLo = angle & 0xFF;         // Low byte
+    packet.angleHi = (angle >> 8) & 0xFF;  // High byte
+    packet.countsLo = sensorCounts & 0xFF; // Low byte
+    packet.countsHi = (sensorCounts >> 8) & 0xFF; // High byte
+    packet.switchByte = switchStatus ? 1 : 0;
+    
+    // Calculate CRC (skipping header, pgn, and length)
+    uint8_t* payload = reinterpret_cast<uint8_t*>(&packet) + 3; // Skip header, pgn, length
+    packet.crc = calculateCRC(payload, packet.length);
+    
+    return packet;
+}
+
+// Create SubnetReply packet
+SubnetReplyPacket createSubnetReplyPacket(const IPAddress& deviceIP, const IPAddress& sourceIP) {
+    SubnetReplyPacket packet;
+    
+    // Set device IP (only first 3 octets used in protocol)
+    packet.ipOne = deviceIP[0];
+    packet.ipTwo = deviceIP[1];
+    packet.ipThree = deviceIP[2];
+    
+    // Set source IP (only first 3 octets used in protocol)
+    packet.srcOne = sourceIP[0];
+    packet.srcTwo = sourceIP[1];
+    packet.srcThree = sourceIP[2];
+    
+    // Calculate CRC (skipping header, pgn, and length)
+    uint8_t* payload = reinterpret_cast<uint8_t*>(&packet) + 3; // Skip header, pgn, length
+    packet.crc = calculateCRC(payload, packet.length);
     
     return packet;
 }
@@ -209,6 +252,53 @@ void processReceivedPacket(const uint8_t* data, size_t len) {
             }
             break;
         }
+        
+        case PGN_HELLO_MODULE: {
+            // Process hello packet from AgIO
+            if (len >= sizeof(HelloModulePacket)) {
+                const HelloModulePacket* helloPacket = reinterpret_cast<const HelloModulePacket*>(data);
+                
+                // Check if the hello is for this module (module ID 126 = steer module)
+                if (helloPacket->moduleId == 126) {
+                    // Get the sender's IP and port
+                    IPAddress senderIP = getLastSenderIP();
+                    uint16_t senderPort = getLastSenderPort();
+                    
+                    // Get current sensor values
+                    float actualSteerAngle = was::get_steering_angle();
+                    uint16_t sensorCounts = was::get_wheel_angle_sensor_counts();
+                    bool switchStatus = getSteerSwitchState();
+                    
+                    // Send hello reply
+                    sendHelloReply(senderIP, senderPort, actualSteerAngle, sensorCounts, switchStatus);
+                }
+            }
+            break;
+        }
+        
+        case PGN_SCAN_REQUEST: {
+            // Process scan request from AgIO
+            if (len >= sizeof(ScanRequestPacket)) {
+                const ScanRequestPacket* scanPacket = reinterpret_cast<const ScanRequestPacket*>(data);
+                
+                // Verify the scan request values (202, 202, 5)
+                if (scanPacket->scanValue1 == 202 && 
+                    scanPacket->scanValue2 == 202 && 
+                    scanPacket->scanValue3 == 5) {
+                    
+                    // Get the sender's IP and port
+                    IPAddress senderIP = getLastSenderIP();
+                    uint16_t senderPort = getLastSenderPort();
+                    
+                    // Get our own IP address
+                    IPAddress deviceIP = WiFi.localIP();
+                    
+                    // Send subnet reply
+                    sendSubnetReply(senderIP, senderPort, deviceIP, senderIP);
+                }
+            }
+            break;
+        }
             
         default:
             // Unknown packet type - ignore
@@ -232,6 +322,24 @@ bool sendAutoSteerData(const IPAddress& targetIP, uint16_t targetPort,
 bool sendAutoSteer2Data(const IPAddress& targetIP, uint16_t targetPort, uint8_t sensorValue) {
     // Create the packet
     AutoSteerData2 packet = createAutoSteer2Packet(sensorValue);
+    
+    // Send via UDP
+    return sendUDPPacket(targetIP, targetPort, reinterpret_cast<uint8_t*>(&packet), sizeof(packet));
+}
+
+// Send Hello reply to AgIO
+bool sendHelloReply(const IPAddress& targetIP, uint16_t targetPort, float actualSteerAngle, uint16_t sensorCounts, bool switchStatus) {
+    // Create the packet
+    HelloReplyPacket packet = createHelloReplyPacket(actualSteerAngle, sensorCounts, switchStatus);
+    
+    // Send via UDP
+    return sendUDPPacket(targetIP, targetPort, reinterpret_cast<uint8_t*>(&packet), sizeof(packet));
+}
+
+// Send Subnet reply to AgIO
+bool sendSubnetReply(const IPAddress& targetIP, uint16_t targetPort, const IPAddress& deviceIP, const IPAddress& sourceIP) {
+    // Create the packet
+    SubnetReplyPacket packet = createSubnetReplyPacket(deviceIP, sourceIP);
     
     // Send via UDP
     return sendUDPPacket(targetIP, targetPort, reinterpret_cast<uint8_t*>(&packet), sizeof(packet));

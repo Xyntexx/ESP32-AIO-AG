@@ -13,6 +13,9 @@ namespace was {
     
     // For AOG communication - get 8-bit raw wheel angle sensor value
     uint8_t get_wheel_angle_sensor_raw();
+    
+    // Get wheel angle sensor counts for hello messages
+    uint16_t get_wheel_angle_sensor_counts();
 }
 
 #endif //WAS_H

@@ -21,6 +21,10 @@ const uint8_t PGN_STEER_SETTINGS = 0xFC; // 252 - Steer Settings from AOG
 const uint8_t PGN_STEER_CONFIG = 0xFB;   // 251 - Steer Config from AOG
 const uint8_t PGN_FROM_AUTOSTEER = 0xFD; // 253 - Data from AutoSteer to AOG
 const uint8_t PGN_FROM_AUTOSTEER2 = 0xFA; // 250 - Extra data from AutoSteer to AOG
+const uint8_t PGN_HELLO_MODULE = 0xC8;   // 200 - Hello from AgIO to Module
+const uint8_t PGN_HELLO_REPLY = 0x7E;    // 126 - Hello Reply from Steer Module to AgIO
+const uint8_t PGN_SCAN_REQUEST = 0xCA;   // 202 - Scan request from AgIO
+const uint8_t PGN_SUBNET_REPLY = 0xCB;   // 203 - Subnet reply to AgIO
 
 // Packets received from AOG (AgOpenGPS)
 #pragma pack(1)
@@ -66,6 +70,26 @@ struct SteerConfigPacket {
     uint8_t crc;            // Byte 13: CRC
 };
 
+struct HelloModulePacket {
+    uint8_t header[3] = {0x80, 0x81, 0x7F};
+    uint8_t pgn = PGN_HELLO_MODULE;
+    uint8_t length = 3;
+    uint8_t moduleId;       // Byte 5: Module ID
+    uint8_t reserved1;      // Byte 6: Reserved
+    uint8_t reserved2;      // Byte 7: Reserved
+    uint8_t crc;            // Byte 8: CRC
+};
+
+struct ScanRequestPacket {
+    uint8_t header[3] = {0x80, 0x81, 0x7F};
+    uint8_t pgn = PGN_SCAN_REQUEST;
+    uint8_t length = 3;
+    uint8_t scanValue1 = 202;     // Byte 5: Always 202
+    uint8_t scanValue2 = 202;     // Byte 6: Always 202
+    uint8_t scanValue3 = 5;       // Byte 7: Always 5
+    uint8_t crc;                  // Byte 8: CRC
+};
+
 // Packets sent to AOG (AgOpenGPS)
 struct AutoSteerData {
     uint8_t header[1] = {0x7E};
@@ -95,6 +119,32 @@ struct AutoSteerData2 {
     uint8_t reserved7;       // Byte 10: Reserved
     uint8_t crc;             // Byte 11: CRC
 };
+
+struct HelloReplyPacket {
+    uint8_t header[1] = {0x7E};
+    uint8_t pgn = PGN_HELLO_REPLY;
+    uint8_t length = 5;
+    uint8_t angleLo;         // Byte 3: Angle Low byte
+    uint8_t angleHi;         // Byte 4: Angle High byte
+    uint8_t countsLo;        // Byte 5: Counts Low byte
+    uint8_t countsHi;        // Byte 6: Counts High byte
+    uint8_t switchByte;      // Byte 7: Switch status
+    uint8_t crc;             // Byte 8: CRC
+};
+
+struct SubnetReplyPacket {
+    uint8_t header[1] = {0x7E};
+    uint8_t pgn = PGN_SUBNET_REPLY;
+    uint8_t length = 7;
+    uint8_t ipOne;          // Byte 3: IP Address first octet
+    uint8_t ipTwo;          // Byte 4: IP Address second octet
+    uint8_t ipThree;        // Byte 5: IP Address third octet
+    uint8_t moduleId = 126; // Byte 6: Module ID (126 for steer)
+    uint8_t srcOne;         // Byte 7: Source Address first octet
+    uint8_t srcTwo;         // Byte 8: Source Address second octet
+    uint8_t srcThree;       // Byte 9: Source Address third octet
+    uint8_t crc;            // Byte 10: CRC
+};
 #pragma pack()
 
 // Function declarations
@@ -106,10 +156,14 @@ void processReceivedPacket(const uint8_t* data, size_t len);
 uint8_t calculateCRC(const uint8_t* data, size_t length);
 AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float roll, bool switchStatus, uint8_t pwmDisplay);
 AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue);
+HelloReplyPacket createHelloReplyPacket(float actualSteerAngle, uint16_t sensorCounts, bool switchStatus);
+SubnetReplyPacket createSubnetReplyPacket(const IPAddress& deviceIP, const IPAddress& sourceIP);
 
 // Send data functions
 bool sendAutoSteerData(const IPAddress& targetIP, uint16_t targetPort, float actualSteerAngle, float heading, float roll, bool switchStatus, uint8_t pwmDisplay);
 bool sendAutoSteer2Data(const IPAddress& targetIP, uint16_t targetPort, uint8_t sensorValue);
+bool sendHelloReply(const IPAddress& targetIP, uint16_t targetPort, float actualSteerAngle, uint16_t sensorCounts, bool switchStatus);
+bool sendSubnetReply(const IPAddress& targetIP, uint16_t targetPort, const IPAddress& deviceIP, const IPAddress& sourceIP);
 
 // Status functions
 bool guidancePacketValid();
