@@ -11,6 +11,9 @@
 #define STEER_BTN_PIN 12
 #define WORK_BTN_PIN 13
 
+#define STEER_BTN_ACTIVE_STATE 1
+#define WORK_BTN_ACTIVE_STATE 1
+
 #define I2C_SDA_PIN 5
 #define I2C_SCL_PIN 4
 
