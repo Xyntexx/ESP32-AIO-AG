@@ -16,4 +16,8 @@
 
 #define USE_DHCP false
 
+#define BUTTONS_TASK_PRIORITY 6
+#define WAS_TASK_PRIORITY 4
+#define AUTOSTEER_TASK_PRIORITY 5
+
 #endif // DEFINES_H
