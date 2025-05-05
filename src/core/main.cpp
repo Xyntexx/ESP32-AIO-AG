@@ -1,6 +1,7 @@
 #include "../config/defines.h"
 #include "../utils/log.h"
 #include "network/ethernet.h"
+#include "autosteer/autosteer.h"
 
 void setup() {
   // Initialize basic logging first
@@ -19,6 +20,9 @@ void setup() {
 
   initializeEthernet();
   debug("Ethernet initialized");
+
+  initAutosteer();
+  debug("Autosteer initialized");
 
   // Initialize UDP logging after Ethernet is up
   //initUDPLogging();
