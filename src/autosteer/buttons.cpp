@@ -4,6 +4,7 @@
 #include "config/defines.h"
 #include "settings/settings.h"
 #include "utils/log.h"
+#include "udp_io.h"
 
 namespace buttons {
 

@@ -1,4 +1,6 @@
 #include "imu.h"
+
+#include "config/defines.h"
 #include "settings/settings.h"
 #include "utils/log.h"
 #include "hardware/BNO085/BNO085.h"

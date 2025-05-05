@@ -1,0 +1,253 @@
+#include "udp_io.h"
+
+#include "autosteer_config.h"
+#include "../network/udp.h"
+#include "was.h"
+#include "imu.h"
+#include "buttons.h"
+#include "autosteer.h"
+#include "motor.h"
+
+// Global variables
+bool newDataFromAOG = false;
+uint32_t lastDataReceived = 0;
+float steerAngleSetPoint = 0.0f;
+uint8_t guidanceStatus = 0;
+float gpsSpeed = 0.0f;
+uint8_t sectionControlByte = 0;
+
+// Initialize communication
+bool initAutosteerCommunication(uint16_t port) {
+    // Initialize UDP and reset communication state
+    lastDataReceived = 0;
+    newDataFromAOG = false;
+    steerAngleSetPoint = 0.0f;
+    guidanceStatus = 0;
+
+    return initUDP(port);
+}
+
+// Calculate CRC for a given data array
+uint8_t calculateCRC(const uint8_t* data, size_t length) {
+    uint8_t crc = 0;
+    for (size_t i = 0; i < length; i++) {
+        crc += data[i];
+    }
+    return crc;
+}
+
+// Create an AutoSteer data packet
+AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float roll, bool switchStatus, uint8_t pwmDisplay) {
+    AutoSteerData packet;
+    
+    // Fill in the data
+    packet.actualSteerAngle = static_cast<uint16_t>(actualSteerAngle * 100.0f);
+    packet.imuHeading = static_cast<uint16_t>(heading * 10.0f);
+    packet.imuRoll = static_cast<uint16_t>(roll * 10.0f);
+    packet.switchByte = switchStatus ? 1 : 0;
+    packet.pwmDisplay = pwmDisplay;
+    packet.reserved1 = 0;
+    packet.reserved2 = 0;
+    
+    // Calculate CRC (skipping header, pgn, and length)
+    uint8_t* payload = reinterpret_cast<uint8_t*>(&packet) + 3; // Skip header, pgn, length
+    packet.crc = calculateCRC(payload, PAYLOAD_LENGTH);
+    
+    return packet;
+}
+
+// Create an AutoSteer2 data packet
+AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue) {
+    AutoSteerData2 packet;
+    
+    // Fill in the data
+    packet.sensorValue = sensorValue;
+    
+    // Clear reserved fields
+    packet.reserved1 = 0;
+    packet.reserved2 = 0;
+    packet.reserved3 = 0;
+    packet.reserved4 = 0;
+    packet.reserved5 = 0;
+    packet.reserved6 = 0;
+    packet.reserved7 = 0;
+    
+    // Calculate CRC (skipping header, pgn, and length)
+    uint8_t* payload = reinterpret_cast<uint8_t*>(&packet) + 3; // Skip header, pgn, length
+    packet.crc = calculateCRC(payload, PAYLOAD_LENGTH);
+    
+    return packet;
+}
+
+// Process received UDP packets - callback for the UDP subsystem
+void udpReceivedCallback(AsyncUDPPacket packet) {
+    if (packet.length() > 0) {
+        processReceivedPacket(packet.data(), packet.length());
+    }
+}
+
+// Main communication update function - should be called in the main loop
+void updateUDPCommunication() {
+    // Set the UDP callback
+    setUDPReceiveCallback(udpReceivedCallback);
+    
+    // Check watchdog timeout
+    if (millis() - lastDataReceived > WATCHDOG_TIMEOUT) {
+        if (newDataFromAOG) {
+            // Communication lost - reset control values
+            newDataFromAOG = false;
+            guidanceStatus = 0;
+            steerAngleSetPoint = 0.0f;
+        }
+    }
+}
+
+// Verify packet CRC
+bool verifyPacketCRC(const uint8_t* data, size_t length) {
+    if (length < 5) return false; // Must have at least header(3) + pgn(1) + length(1)
+    
+    uint8_t packetLength = data[4]; // Get the length byte
+    if (length < packetLength + 6) return false; // Not enough data for the specified length + header + crc
+    
+    uint8_t receivedCrc = data[5 + packetLength]; // CRC is after header(3) + pgn(1) + length(1) + payload(N)
+    
+    // Calculate CRC on payload bytes
+    uint8_t calculatedCrc = 0;
+    for (uint8_t i = 0; i < packetLength; i++) {
+        calculatedCrc += data[5 + i]; // Start after header(3) + pgn(1) + length(1)
+    }
+    
+    return calculatedCrc == receivedCrc;
+}
+
+// Parse and process received packets
+void processReceivedPacket(const uint8_t* data, size_t len) {
+    // Check if packet is long enough for header + PGN + length
+    if (len < 5) return;
+    
+    // Check header (first 3 bytes)
+    for (uint8_t i = 0; i < 3; i++) {
+        if (data[i] != AOG_HEADER[i]) {
+            return; // Invalid header
+        }
+    }
+    
+    // Get packet type (PGN) and verify packet format
+    uint8_t pgn = data[3];
+    uint8_t packetLength = data[4];
+    
+    // Make sure we have complete packet
+    if (len < packetLength + 6) return; // 3(header) + 1(pgn) + 1(length) + payload + 1(crc)
+    
+    // Verify CRC
+    if (!verifyPacketCRC(data, len)) {
+        return; // Invalid CRC
+    }
+    
+    switch (pgn) {
+        case PGN_STEER_DATA: {
+            // Process steer data packet - check valid size
+            if (len >= sizeof(SteerData)) {
+                const SteerData* steerData = reinterpret_cast<const SteerData*>(data);
+                
+                // Extract and convert values
+                gpsSpeed = static_cast<float>(steerData->speed) * 0.1f;
+                guidanceStatus = steerData->status & 0x01;
+                steerAngleSetPoint = static_cast<float>(steerData->steerAngle) * 0.01f;
+                
+                // Adjust for negative values if needed
+                if (steerAngleSetPoint > 500.0f) {
+                    steerAngleSetPoint -= 655.35f;
+                }
+                
+                sectionControlByte = steerData->sectionLo;
+                
+                // Update timestamps and flags
+                newDataFromAOG = true;
+                lastDataReceived = millis();
+                
+                // Send AutoSteerData and AutoSteerData2 packets as broadcast response
+                // Use the broadcast IP address (255.255.255.255) and AOG port 9999
+                IPAddress broadcastIP(255, 255, 255, 255);
+                uint16_t aogPort = 9999;
+                
+                // Get current sensor values from their respective modules
+                float actualSteerAngle = was::get_steering_angle();
+                float heading = imu::get_heading();
+                float roll = imu::get_roll();
+                bool switchStatus = getSteerSwitchState();
+                uint8_t pwmDisplay = motor::getCurrentPWM();
+                uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
+                
+                // Send response packets
+                sendAutoSteerData(broadcastIP, aogPort, actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
+                sendAutoSteer2Data(broadcastIP, aogPort, sensorValue);
+            }
+            break;
+        }
+            
+        case PGN_STEER_SETTINGS: {
+            // Process steer settings packet
+            if (len >= sizeof(SteerSettings)) {
+                const SteerSettings* settings = reinterpret_cast<const SteerSettings*>(data);
+                
+                // Handle settings here - just a stub for now
+                // Example: Set PID values, PWM settings, etc.
+                // For future implementation
+            }
+            break;
+        }
+            
+        case PGN_STEER_CONFIG: {
+            // Process steer config packet
+            if (len >= sizeof(SteerConfigPacket)) {
+                const SteerConfigPacket* config = reinterpret_cast<const SteerConfigPacket*>(data);
+                
+                // Handle configuration here - just a stub for now
+                // Example: Set device modes, steer switch types, etc.
+                // For future implementation
+            }
+            break;
+        }
+            
+        default:
+            // Unknown packet type - ignore
+            break;
+    }
+}
+
+// Send AutoSteer data to AOG
+bool sendAutoSteerData(const IPAddress& targetIP, uint16_t targetPort,
+                      float actualSteerAngle, float heading, float roll,
+                      bool switchStatus, uint8_t pwmDisplay) {
+    // Create the packet
+    AutoSteerData packet = createAutoSteerPacket(
+        actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
+    
+    // Send via UDP
+    return sendUDPPacket(targetIP, targetPort, reinterpret_cast<uint8_t*>(&packet), sizeof(packet));
+}
+
+// Send AutoSteer2 data to AOG
+bool sendAutoSteer2Data(const IPAddress& targetIP, uint16_t targetPort, uint8_t sensorValue) {
+    // Create the packet
+    AutoSteerData2 packet = createAutoSteer2Packet(sensorValue);
+    
+    // Send via UDP
+    return sendUDPPacket(targetIP, targetPort, reinterpret_cast<uint8_t*>(&packet), sizeof(packet));
+}
+
+// Check if we have valid guidance data from AOG
+bool guidancePacketValid() {
+    return newDataFromAOG && (millis() - lastDataReceived < WATCHDOG_TIMEOUT);
+}
+
+// Get steer switch status
+bool getSwSwitchStatus() {
+    return guidanceStatus && guidancePacketValid();
+}
+
+// Get the steer angle setpoint (if guidance is valid)
+float getSteerSetPoint() {
+    return guidancePacketValid() ? steerAngleSetPoint : 0.0f;
+}

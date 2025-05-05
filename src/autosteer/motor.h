@@ -26,6 +26,12 @@ void drive(uint8_t pwm, bool reversed);
  */
 void stop();
 
+/**
+ * Get the current PWM value being applied to the motor
+ * @return Current PWM value (0-255)
+ */
+uint8_t getCurrentPWM();
+
 // Global functions used by autosteer
 void driveMotor(uint8_t pwm, bool reversed);
 void stopMotor();

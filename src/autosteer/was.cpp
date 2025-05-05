@@ -45,7 +45,7 @@ ADS1115_lite ads1115;
 }
 
 int16_t get_raw_steering_position() {
-    return actual_steer_pos_raw();
+    return actual_steer_pos_raw;
 }
 
 int16_t get_steering_position() {
@@ -67,6 +67,11 @@ int16_t get_steering_position() {
 float get_steering_angle() {
     //center the steering position sensor
     return ((float) (get_steering_position()) / Set.steerSensorCounts);
+}
+
+// For AOG communication - get 8-bit raw wheel angle sensor value
+uint8_t get_wheel_angle_sensor_raw() {
+    return static_cast<uint8_t>(get_raw_steering_position() & 0xFF);
 }
 
 void init() {

@@ -1,5 +1,4 @@
 #include "BNO085.h"
-#include "../../core/globals.h"
 #include "../../utils/log.h"
 #include "../i2c_manager.h"
 

@@ -7,4 +7,7 @@
 // Initialize all autosteer components
 void initAutosteer();
 
+// Get the combined steer switch state (physical button and software switch)
+bool getSteerSwitchState();
+
 #endif // STEERING_CONTROL_H 

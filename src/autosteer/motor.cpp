@@ -5,9 +5,12 @@
 #include "motor.h"
 #include "../config/pinout.h"
 #include "utils/log.h"
+#include "udp_io.h"
 
 // Track initialization state
 static bool initialized = false;
+// Track current PWM value
+static uint8_t currentPWM = 0;
 
 namespace motor {
 void init() {
@@ -23,6 +26,9 @@ void init() {
     digitalWrite(MOTOR_ENABLE_PIN, LOW);
     digitalWrite(MOTOR_PWM_PIN, LOW);
     digitalWrite(MOTOR_DIR_PIN, LOW);
+    
+    // Initialize PWM value
+    currentPWM = 0;
 
     initialized = true;
     debugf("Motor initialized");
@@ -39,6 +45,9 @@ void drive(uint8_t pwm, bool reversed) {
 
     // Enable motor
     digitalWrite(MOTOR_ENABLE_PIN, HIGH);
+    
+    // Update the current PWM value for reporting
+    currentPWM = pwm;
 }
 
 void stop() {
@@ -49,6 +58,16 @@ void stop() {
 
     // Set PWM to 0
     analogWrite(MOTOR_PWM_PIN, 0);
+    
+    // Update the current PWM value to 0
+    currentPWM = 0;
+}
+
+/**
+ * Get current PWM value
+ */
+uint8_t getCurrentPWM() {
+    return currentPWM;
 }
 
 // Global functions that use the motor namespace functions

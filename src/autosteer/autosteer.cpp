@@ -1,11 +1,9 @@
 #include "autosteer.h"
 #include "pid_controller.h"
 #include "buttons.h"
-#include "../hardware/sensors.h"
 #include "udp_io.h"
 #include "utils/log.h"
 #include "was.h"
-#include "buttons.h"
 #include "motor.h"
 #include "imu.h"
 #include "config/defines.h"
@@ -20,11 +18,13 @@
     bool swEnable = getSwSwitchStatus();
     if (hwEnable && swEnable) {
       steerEnable = true;
+    }
 
       if (steerEnable != prevSteerEnable) {
-        debugf("Steer " "activated"?steerEnable:"deactivated");
+        debugf("Steer enable state changed: %s", steerEnable ? "enabled" : "disabled");
         prevSteerEnable = steerEnable;
       }
+
       float steerAngleActual   = was::get_steering_angle();   //get the steering angle from the steering wheel encoder
       float steerAngleSetPoint = getSteerSetPoint();   //get the steering setpoint AGIO
 
@@ -33,13 +33,14 @@
       auto control_out = calcSteeringPID(steerAngleError);   //do the pid
       uint8_t pwm = max(abs(control_out),255);
       bool reversed = control_out < 0;
+
+    if (steerEnable){
       motor::driveMotor(pwm, reversed);       //out to motors the pwm value
     }
     else {
-      steerEnable = false;
       motor::stopMotor();
+      pulseCount = 0; //Reset counters if Autosteer is offline
     }
-    pulseCount = 0; //Reset counters if Autosteer is offline
     delay(1);
   }
 }
@@ -56,4 +57,9 @@ void initAutosteer() {
   xTaskCreate(autoSteerTask, "autoSteerTask", 4096, NULL, AUTOSTEER_TASK_PRIORITY, NULL);
   
   info("Autosteer system initialized");
+}
+
+// Get the combined steer switch state (physical button and software switch)
+bool getSteerSwitchState() {
+  return buttons::steer_button_enabled();
 }
