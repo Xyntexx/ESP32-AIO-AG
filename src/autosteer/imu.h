@@ -11,7 +11,7 @@ float get_roll();
 
 float get_pitch();
 
-void init();
+bool init();
 }
 
 #endif //IMU_H

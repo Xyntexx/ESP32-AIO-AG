@@ -1,8 +1,7 @@
 #include "imu.h"
-
-#include "core/globals.h"
 #include "settings/settings.h"
 #include "utils/log.h"
+#include "hardware/BNO085/BNO085.h"
 
 namespace imu {
 float heading = 0.0;
@@ -63,7 +62,15 @@ float get_pitch() {
 }
 
 bool init() {
+    // Initialize BNO08X if it's the selected IMU type
+    if (Set.imuType == IMUType::BNO08X) {
+        if (!bno08x.begin()) {
+            warning("Failed to initialize BNO08X");
+            return false;
+        }
+    }
     xTaskCreate(imu_task_loop, "imu_task", 4096, nullptr, IMU_TASK_PRIORITY, nullptr);
     return true;
 }
 }
+
