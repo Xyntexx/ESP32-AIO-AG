@@ -1,4 +1,4 @@
-#include "settings.h"
+#include "settings_hw.h"
 #include "../../autosteer/settings.h"
 #include "../../utils/log.h"
 #include <EEPROM.h>
@@ -15,8 +15,8 @@ bool Settings::init() {
 
     // Initialize the settings interface
     settings::init({
-        .read = [](uint8_t address) { return Settings::read(address); },
-        .write = [](uint8_t value) { Settings::write(0, value); }  // Note: address is ignored in this simple implementation
+        .read = Settings::read,
+        .write = Settings::write
     });
 
     initialized = true;
@@ -24,15 +24,15 @@ bool Settings::init() {
     return true;
 }
 
-uint8_t Settings::read(uint8_t address) {
+uint8_t Settings::read() {
     if (!initialized) init();
-    return EEPROM.read(address);
+    return true; //EEPROM.read(address);
 }
 
-void Settings::write(uint8_t address, uint8_t value) {
+void Settings::write(uint8_t value) {
     if (!initialized) init();
-    EEPROM.write(address, value);
-    EEPROM.commit();
+    //EEPROM.write(address, value);
+    //EEPROM.commit();
 }
 
 } // namespace hw 

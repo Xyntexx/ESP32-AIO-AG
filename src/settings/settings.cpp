@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "autosteer/settings.h"
 
 // Global settings instance
 Storage Set;

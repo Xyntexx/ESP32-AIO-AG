@@ -35,14 +35,11 @@ void setup() {
   hw::init();
   debug("Hardware initialized");
 
-  initAutosteer();
-  debug("Autosteer initialized");
+  create_tasks();
+  debug("Tasks created");
 
   initUDP();
   debug("UDP initialized");
-
-  create_tasks();
-  debug("Tasks created");
 
   info("System ready");
 }

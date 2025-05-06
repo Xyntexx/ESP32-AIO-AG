@@ -7,6 +7,13 @@
 
 #include <stdint.h>
 
+// Enum classes for settings
+enum class SteerConfig {
+    MOTOR_DRIVE = 0,
+    HYDRAULIC = 1,
+    PWM_DUAL_COIL = 2
+};
+
 namespace motor {
     // Function pointer types for hardware implementation
     using DriveFunc = void (*)(uint8_t pwm, bool reversed);

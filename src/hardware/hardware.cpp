@@ -1,13 +1,9 @@
-//
-// Created by MarkusNuuja on 06/05/2025.
-//
-
 #include "hardware.h"
 #include "imu/bno08x_imu.h"
 #include "was/ads1115_was.h"
 #include "motor/pwm_motor.h"
-#include "buttons/buttons.h"
-#include "settings/settings.h"
+#include "buttons/buttons_hw.h"
+#include "settings/settings_hw.h"
 
 namespace hw{
 

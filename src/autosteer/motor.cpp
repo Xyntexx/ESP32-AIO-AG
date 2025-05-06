@@ -3,7 +3,7 @@
 //
 
 #include "motor.h"
-#include "settings/settings.h"
+#include "settings.h"
 
 // Track initialization state
 static bool initialized = false;

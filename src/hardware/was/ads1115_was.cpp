@@ -30,17 +30,12 @@ bool ADS1115WAS::init() {
     ads1115.setGain(ADS1115_GAIN_6_144V); // Set gain to 6.144V
 
     // Start the first conversion for the first read
-    I2C_MUTEX_LOCK();
     if (was::get_type() == WASType::single) {
         ads1115.setMux(ADS1115_MUX_SINGLE_0);
     } else {
         ads1115.setMux(ADS1115_MUX_DIFF_0_1);
     }
     ads1115.startConversion(); // Start first conversion
-    I2C_MUTEX_UNLOCK();
-    first_read = false;
-
-
     I2C_MUTEX_UNLOCK();
 
     was::init({

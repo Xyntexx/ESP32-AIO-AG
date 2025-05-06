@@ -36,10 +36,12 @@ bool BNO08XIMU::init() {
 }
 
 void BNO08XIMU::handler(){
+    I2C_MUTEX_LOCK();
     heading = bno08x.getHeading();
     roll = bno08x.getRoll();
     pitch = bno08x.getPitch();
     bno08x.update();
+    I2C_MUTEX_UNLOCK();
 }
 
 float BNO08XIMU::getHeading(){

@@ -4,6 +4,7 @@
 #include "was.h"
 #include "imu.h"
 #include "autosteer.h"
+#include "buttons.h"
 #include "motor.h"
 #include "utils/log.h"
 
@@ -174,6 +175,10 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
     // Verify CRC
     if (!verifyPacketCRC(data, len)) {
         debugf("CRC verification failed for PGN %d", pgn);
+        //print package contents:
+        for (size_t i = 0; i < len; i++) {
+            debugf("0x%02X ", data[i]);
+        }
         return; // Invalid CRC
     }
 
@@ -205,7 +210,7 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 float actualSteerAngle = was::get_steering_angle();
                 float heading = imu::get_heading();
                 float roll = imu::get_roll();
-                bool switchStatus = getSteerSwitchState();
+                bool switchStatus = buttons::steerBntEnabled();
                 uint8_t pwmDisplay = motor::getCurrentPWM();
                 uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
 
@@ -262,7 +267,7 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                     // Get current sensor values
                     float actualSteerAngle = was::get_steering_angle();
                     uint16_t sensorCounts  = was::get_wheel_angle_sensor_counts();
-                    bool switchStatus      = getSteerSwitchState();
+                    bool switchStatus      = buttons::steerBntEnabled();
 
                     debugf("Sending HelloReply: angle=%.2f, counts=%d, switch=%d", 
                            actualSteerAngle, sensorCounts, switchStatus);

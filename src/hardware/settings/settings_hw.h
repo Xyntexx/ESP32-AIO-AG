@@ -1,7 +1,7 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-#include "../../config/pinout.h"
+#include <cstdint>
 
 namespace hw {
 
@@ -9,8 +9,8 @@ namespace hw {
 class Settings {
 public:
     static bool init();
-    static uint8_t read(uint8_t address);
-    static void write(uint8_t address, uint8_t value);
+    static uint8_t read();
+    static void write(uint8_t value);
 
 private:
     static bool initialized;

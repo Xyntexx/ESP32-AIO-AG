@@ -1,6 +1,6 @@
 #include "pid_controller.h"
-#include "settings/settings.h"
 #include "autosteer_config.h"
+#include "settings.h"
 
 // Calculate steering PID
 int calcSteeringPID(float steerAngleError) {

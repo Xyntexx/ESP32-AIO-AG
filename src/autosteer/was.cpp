@@ -1,5 +1,6 @@
 #include "was.h"
-#include "settings/settings.h"
+
+#include "settings.h"
 
 namespace was {
     // Static interface pointer

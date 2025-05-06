@@ -14,7 +14,7 @@ struct ip_address {
 #define HEADER_LENGTH 3 // includes length byte
 #define PAYLOAD_LENGTH 8
 #define INCOMING_CRC_START_BYTE 2
-#define OUTGOING_CRC_START_BYTE 0
+#define OUTGOING_CRC_START_BYTE 1
 
 
 // Packet header bytes

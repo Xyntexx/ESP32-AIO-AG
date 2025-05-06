@@ -1,7 +1,44 @@
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#ifndef AUTOSTEER_SETTINGS_H
+#define AUTOSTEER_SETTINGS_H
 
 #include <stdint.h>
+
+#include "buttons.h"
+#include "motor.h"
+#include "was.h"
+#include "settings/settings.h"
+
+// Storage struct for all settings
+struct Storage {
+    // Steering configuration
+    SteerConfig steerConfig = SteerConfig::MOTOR_DRIVE;
+
+    // IMU
+    uint8_t imuAddress = 0x28;
+
+    // PID values
+    float Kp = 20.0;
+    float Ki = 0.5;
+    float Kd = 1.0;
+
+    // WAS
+    int16_t steerAngleOffset = 0.0;
+    int16_t steerSensorCounts = 1024;
+    float ackermanFix = 1.0;
+    WASType wasType = WASType::single;
+    bool invertWAS = false;
+    bool invertSteer = false;
+
+    // Motor
+    uint8_t minPWM = 10;
+    uint8_t maxPWM = 255;
+
+    steer_switch_type_types steer_switch_type = steer_switch_type_types::SWITCH;
+};
+
+// Global settings instance
+extern Storage Set;
+
 
 namespace settings {
     // Function pointer types for hardware implementation
@@ -22,4 +59,4 @@ namespace settings {
     void write(uint8_t address, uint8_t value);
 }
 
-#endif //SETTINGS_H 
+#endif //AUTOSTEER_SETTINGS_H
