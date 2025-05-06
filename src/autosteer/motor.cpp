@@ -12,10 +12,10 @@ static uint8_t currentPWM = 0;
 
 namespace motor {
 // Static interface pointer
-static MotorInterface *hw_interface = nullptr;
+static MotorInterface hw_interface;
 
-bool init(const MotorInterface &hw) {
-    hw_interface = const_cast<MotorInterface *>(&hw);
+bool init(const MotorInterface hw) {
+    hw_interface = hw;
     return true;
 }
 
@@ -23,8 +23,8 @@ bool init(const MotorInterface &hw) {
  * Get current PWM value
  */
 uint8_t getCurrentPWM() {
-    if (hw_interface && hw_interface->getPwm) {
-        return hw_interface->getPwm();
+    if (hw_interface.getPwm) {
+        return hw_interface.getPwm();
     }
     return currentPWM;
 }
@@ -36,14 +36,14 @@ void driveMotor(uint8_t pwm, bool reversed) {
         reversed = !reversed;
     }
 
-    if (hw_interface && hw_interface->drive) {
-        hw_interface->drive(pwm, reversed);
+    if (hw_interface.drive) {
+        hw_interface.drive(pwm, reversed);
     }
 }
 
 void stopMotor() {
-    if (hw_interface && hw_interface->stop) {
-        hw_interface->stop();
+    if (hw_interface.stop) {
+        hw_interface.stop();
     }
 }
 }

@@ -22,13 +22,13 @@ namespace motor {
 
     // Interface structure for hardware implementation
     struct MotorInterface {
-        DriveFunc drive;
-        StopFunc stop;
-        GetPwmFunc getPwm;
+        DriveFunc drive = nullptr;
+        StopFunc stop = nullptr;
+        GetPwmFunc getPwm = nullptr;
     };
 
     // Function declarations
-    bool init(const MotorInterface& hw);
+    bool init(const MotorInterface hw);
     
     // Global functions used by autosteer
     void driveMotor(uint8_t pwm, bool reversed);

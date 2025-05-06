@@ -21,9 +21,6 @@ private:
     static float pitch;
 };
 
-// Get the IMU interface for BNO08X
-imu::IMUInterface getBNO08XInterface();
-
 } // namespace hw
 
 #endif // BNO08X_IMU_H 

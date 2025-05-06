@@ -24,12 +24,12 @@ bool PWMMotor::init() {
     // Initialize PWM value
     currentPwm = 0;
 
-    motor::init(
-        {
-        .drive = PWMMotor::drive,
-        .stop = PWMMotor::stop,
-        .getPwm = PWMMotor::getPwm
-    });
+    motor::MotorInterface interface;
+    interface.drive = drive;
+    interface.stop = stop;
+    interface.getPwm = getPwm;
+
+    motor::init(interface);
 
     initialized = true;
     debugf("Motor initialized");
@@ -37,7 +37,7 @@ bool PWMMotor::init() {
 }
 
 void PWMMotor::drive(uint8_t pwm, bool reversed) {
-    if (!initialized) init();
+    if (!initialized) return;
 
     // Set direction
     digitalWrite(MOTOR_DIR_PIN, reversed ? LOW : HIGH);

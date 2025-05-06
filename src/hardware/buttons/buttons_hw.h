@@ -11,7 +11,7 @@ public:
     static void handler();
 
 private:
-    static bool initialized;
+    static bool initialized_;
 };
 
 } // namespace hw

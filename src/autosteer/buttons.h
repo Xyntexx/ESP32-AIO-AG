@@ -15,11 +15,11 @@ using ReadFunc = bool (*)();
 
 // Interface structure for hardware implementation
 struct ButtonsInterface {
-    ReadFunc steerPinState;
+    ReadFunc steerPinState = nullptr;
 };
 
 // Function declarations
-bool init(const ButtonsInterface &hw);
+bool init(const ButtonsInterface hw);
 
 void handler();
 

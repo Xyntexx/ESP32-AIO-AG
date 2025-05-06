@@ -38,10 +38,9 @@ bool ADS1115WAS::init() {
     ads1115.startConversion(); // Start first conversion
     I2C_MUTEX_UNLOCK();
 
-    was::init({
-        .readRaw = ADS1115WAS::readRaw
-    });
-
+    was::WASInterface interface;
+    interface.readRaw = readRaw;
+    was::init(interface);
     return true;
 }
 
@@ -77,12 +76,6 @@ void ADS1115WAS::handler() {
             warning("WAS type not supported");
             break;
     }
-}
-
-was::WASInterface getADS1115Interface() {
-    return {
-        .readRaw = ADS1115WAS::readRaw,
-    };
 }
 
 } // namespace hw

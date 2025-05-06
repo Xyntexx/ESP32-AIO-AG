@@ -1,25 +1,24 @@
 #include "buttons_hw.h"
-#include "../../autosteer/buttons.h"
-#include "../../utils/log.h"
+#include "utils/log.h"
 #include "autosteer/buttons.h"
 #include "config/pinout.h"
 
 namespace hw {
 
-bool Buttons::initialized = false;
+bool Buttons::initialized_ = false;
 
 bool Buttons::init() {
-    if (initialized) return true;
+    if (initialized_) return true;
 
     // Configure button pins
     pinMode(STEER_BTN_PIN, INPUT);
 
     // Initialize the buttons interface
-    buttons::init({
-        .steerPinState = steerPinState,
-    });
+    buttons::ButtonsInterface interface;
+    interface.steerPinState = steerPinState;
+    buttons::init(interface);
 
-    initialized = true;
+    initialized_ = true;
     debugf("Buttons initialized");
     return true;
 }

@@ -14,10 +14,10 @@ using ReadRawFunc = int16_t (*)();
 
 // Interface structure for hardware implementation
 struct WASInterface {
-    ReadRawFunc readRaw;
+    ReadRawFunc readRaw = nullptr;
 };
 
-bool init(const WASInterface &hw);
+bool init(WASInterface hw);
 
 int16_t get_raw_steering_position();
 

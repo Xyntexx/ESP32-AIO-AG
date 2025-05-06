@@ -7,14 +7,16 @@
 
 namespace buttons {
 // Static interface pointer
-static ButtonsInterface *hw_interface = nullptr;
+static ButtonsInterface hw_interface;
 
+bool inited = false;
 bool prev_momentary_state = false;
 bool steer_enable         = false;
 bool sw_switch_valid      = false;
 
-bool init(const ButtonsInterface &hw) {
-    hw_interface = const_cast<ButtonsInterface *>(&hw);
+bool init(const ButtonsInterface hw) {
+    hw_interface = hw;
+    inited = true;
     return true;
 }
 
@@ -23,7 +25,7 @@ steer_switch_type_types getButtonType() {
 }
 
 bool steerBntEnabled() {
-    if (hw_interface) {
+    if (inited) {
         return steer_enable;
     }
     return false;
@@ -31,10 +33,10 @@ bool steerBntEnabled() {
 
 void handler() {
     bool btn_state;
-    if (!hw_interface) {
+    if (!inited) {
         btn_state = false;
     }else {
-        btn_state = hw_interface->steerPinState();
+        btn_state = hw_interface.steerPinState();
     }
     auto type      = getButtonType();
 

@@ -9,12 +9,12 @@ namespace imu {
 
     // Interface structure for hardware implementation
     struct IMUInterface {
-        ReadFunc heading;
-        ReadFunc roll;
+        ReadFunc heading = nullptr;
+        ReadFunc roll = nullptr;
     };
 
     // Function declarations
-    bool init(const IMUInterface& hw);
+    bool init(const IMUInterface hw);
 
     float get_heading();
     float get_roll();

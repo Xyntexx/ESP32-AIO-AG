@@ -14,10 +14,10 @@ bool Settings::init() {
     EEPROM.begin(512);
 
     // Initialize the settings interface
-    settings::init({
-        .read = Settings::read,
-        .write = Settings::write
-    });
+    settings::SettingsInterface interface;
+    interface.read = read;
+    interface.write = write;
+    settings::init(interface);
 
     initialized = true;
     debugf("Settings initialized");

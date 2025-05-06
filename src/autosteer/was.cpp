@@ -4,16 +4,16 @@
 
 namespace was {
     // Static interface pointer
-    static WASInterface* hw_interface = nullptr;
+    WASInterface hw_interface;
 
-    bool init(const WASInterface& hw) {
-        hw_interface = const_cast<WASInterface*>(&hw);
+    bool init(const WASInterface hw) {
+        hw_interface = hw;
         return true;
     }
 
     int16_t get_raw_steering_position() {
-        if (hw_interface && hw_interface->readRaw) {
-            return hw_interface->readRaw();
+        if (hw_interface.readRaw) {
+            return hw_interface.readRaw();
         }
         return 0;
     }

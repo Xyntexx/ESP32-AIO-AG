@@ -27,11 +27,10 @@ bool BNO08XIMU::init() {
     }
     I2C_MUTEX_UNLOCK();
 
-    imu::init({
-        .heading = BNO08XIMU::getHeading,
-        .roll = BNO08XIMU::getRoll
-    });
-
+    imu::IMUInterface interface;
+    interface.heading = getHeading;
+    interface.roll = getRoll;
+    imu::init(interface);
     return true;
 }
 

@@ -8,21 +8,21 @@
 
 [[noreturn]] void was_task(void *pv_parameters) {
     for (;;) {
-        hw::ADS1115WAS::handler();
+        //hw::ADS1115WAS::handler();
         vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz update rate
     }
 }
 
 [[noreturn]] void imu_task(void *pv_parameters) {
     for (;;) {
-        hw::BNO08XIMU::handler();
+        //hw::BNO08XIMU::handler();
         vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz update rate
     }
 }
 
 [[noreturn]] void buttons_task(void *pv_parameters) {
     for (;;) {
-        buttons::handler();
+        //buttons::handler();
         vTaskDelay(pdMS_TO_TICKS(100)); // 10Hz update rate
     }
 }
@@ -42,7 +42,7 @@ bool create_tasks() {
     BaseType_t taskCreated = xTaskCreate(
         was_task,
         "was_task", 
-        4096, 
+        2048,
         nullptr, 
         WAS_TASK_PRIORITY, 
         &wasTaskHandle
@@ -76,7 +76,7 @@ bool create_tasks() {
     taskCreated = xTaskCreate(
         buttons_task,
         "buttons_task",
-        2048,
+        1024,
         nullptr,
         BUTTONS_TASK_PRIORITY,
         &buttonsTaskHandle

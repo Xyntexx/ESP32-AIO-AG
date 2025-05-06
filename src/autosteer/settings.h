@@ -47,12 +47,12 @@ namespace settings {
 
     // Interface structure for hardware implementation
     struct SettingsInterface {
-        ReadFunc read;
-        WriteFunc write;
+        ReadFunc read = nullptr;
+        WriteFunc write = nullptr;
     };
 
     // Function declarations
-    bool init(const SettingsInterface& hw);
+    bool init(SettingsInterface hw);
 
     // Global functions used by autosteer
     uint8_t read(uint8_t address);
