@@ -4,6 +4,7 @@
 #include "autosteer/autosteer.h"
 #include "WebServer_ESP32_SC_W6100.h"
 #include "network/udp.h"
+#include "../hardware/i2c_manager.h"
 
 void setup() {
   // Initialize basic logging first
@@ -17,6 +18,13 @@ void setup() {
 
   restoreSettings();
   debug("Settings loaded");
+
+  // Initialize I2C manager before using any I2C devices
+  if (!initI2CManager()) {
+    error("Failed to initialize I2C manager, some components may not work correctly");
+  } else {
+    debug("I2C manager initialized");
+  }
 
   initializeEthernet();
   debug("Ethernet initialized");

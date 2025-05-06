@@ -13,8 +13,8 @@ static bool initialized = false;
 static uint8_t currentPWM = 0;
 
 namespace motor {
-void init() {
-    if (initialized) return;
+bool init() {
+    if (initialized) return true;
 
     // Configure motor control pins
     pinMode(MOTOR_ENABLE_PIN, OUTPUT);
@@ -32,6 +32,7 @@ void init() {
 
     initialized = true;
     debugf("Motor initialized");
+    return true;
 }
 
 void drive(uint8_t pwm, bool reversed) {

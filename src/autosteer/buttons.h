@@ -9,8 +9,11 @@
 
 namespace buttons
 {
-  // Initialize button subsystem
-  void init();
+  /**
+   * Initialize button subsystem
+   * @return true if successful, false otherwise
+   */
+  bool init();
   
   // Status functions
   bool steer_button_enabled();

@@ -55,10 +55,27 @@ bool steer_button_enabled() {
   return steer_enable;
 }
 
-void init() {
-  debug("Buttons initialized");
+bool init() {
+  debug("Initializing buttons");
   pinMode(STEER_BTN_PIN, INPUT);
-  xTaskCreate(buttons_task, "buttons_task", 2048, nullptr, BUTTONS_TASK_PRIORITY, nullptr);
+  
+  TaskHandle_t buttonsTaskHandle = NULL;
+  BaseType_t taskCreated = xTaskCreate(
+    buttons_task, 
+    "buttons_task", 
+    2048, 
+    nullptr, 
+    BUTTONS_TASK_PRIORITY, 
+    &buttonsTaskHandle
+  );
+  
+  if (taskCreated != pdPASS || buttonsTaskHandle == NULL) {
+    error("Failed to create buttons task");
+    return false;
+  }
+  
+  debug("Buttons initialized successfully");
+  return true;
 }
 } // end namespace buttons
 

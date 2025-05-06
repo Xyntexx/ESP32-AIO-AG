@@ -11,8 +11,9 @@
 namespace motor {
 /**
  * Initialize motor control pins
+ * @return true if successful, false otherwise
  */
-void init();
+bool init();
 
 /**
  * Drive the motor at specified PWM and direction

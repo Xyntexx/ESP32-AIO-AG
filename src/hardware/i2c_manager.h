@@ -11,4 +11,11 @@
 #define I2C_MUTEX_UNLOCK() xSemaphoreGive(i2cMutex)
 extern SemaphoreHandle_t i2cMutex;
 
+/**
+ * Initialize the I2C manager
+ * This creates the mutex for I2C access
+ * @return true if successful, false otherwise
+ */
+bool initI2CManager();
+
 #endif // I2C_MANAGER_H
