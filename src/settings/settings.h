@@ -3,26 +3,13 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include "autosteer/was.h"
 
 // Enum classes for settings
 enum class SteerConfig {
     MOTOR_DRIVE = 0,
     HYDRAULIC = 1,
     PWM_DUAL_COIL = 2
-};
-
-enum class IMUType:uint8_t {
-    NONE = 0,
-    BNO055 = 1,
-    BNO08X = 2,
-    MMA8452 = 3,
-    CMPS14 = 4
-};
-
-enum class WASType:uint8_t {
-    ADS_1115_single = 1,
-    ADS_1115_diff = 2,
-    arduino_analog = 3,
 };
 
 enum class steer_switch_type_types:uint8_t {
@@ -38,7 +25,6 @@ struct Storage {
     SteerConfig steerConfig = SteerConfig::MOTOR_DRIVE;
 
     // IMU
-    IMUType imuType = IMUType::BNO055;
     uint8_t imuAddress = 0x28;
 
     // PID values
@@ -50,7 +36,7 @@ struct Storage {
     int16_t steerAngleOffset = 0.0;
     int16_t steerSensorCounts = 0;
     float ackermanFix = 1.0;
-    WASType wasType = WASType::ADS_1115_single;
+    WASType wasType = WASType::single;
     bool invertWAS = false;
     bool invertSteer = false;
     

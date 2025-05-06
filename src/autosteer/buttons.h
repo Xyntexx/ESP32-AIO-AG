@@ -5,19 +5,26 @@
 #ifndef BUTTONS_H
 #define BUTTONS_H
 
-#include <Arduino.h>
+#include <stdint.h>
 
-namespace buttons
-{
-  /**
-   * Initialize button subsystem
-   * @return true if successful, false otherwise
-   */
-  bool init();
-  
-  // Status functions
-  bool steer_button_enabled();
+namespace buttons {
+    // Function pointer types for hardware implementation
+    using ReadFunc = bool (*)();
 
+    // Interface structure for hardware implementation
+    struct ButtonsInterface {
+        ReadFunc isAutoSteerEnabled;
+        ReadFunc isSteerLeftPressed;
+        ReadFunc isSteerRightPressed;
+    };
+
+    // Function declarations
+    bool init(const ButtonsInterface& hw);
+
+    // Global functions used by autosteer
+    bool isAutoSteerEnabled();
+    bool isSteerLeftPressed();
+    bool isSteerRightPressed();
 }
 
 #endif //BUTTONS_H

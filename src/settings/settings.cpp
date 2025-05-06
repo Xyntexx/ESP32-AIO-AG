@@ -40,13 +40,12 @@ void restoreSettings() {
   
   // Load autosteer settings
   Set.steerConfig = static_cast<SteerConfig>(preferences.getUChar("steerConfig", static_cast<uint8_t>(SteerConfig::MOTOR_DRIVE)));
-  Set.imuType = static_cast<IMUType>(preferences.getUChar("imuType", static_cast<uint8_t>(IMUType::BNO055)));
   Set.imuAddress = preferences.getUChar("imuAddr", 0x28);
   Set.invertWAS = preferences.getBool("invertWAS", false);
   Set.invertSteer = preferences.getBool("invertSteer", false);
   
   // Load sensor configurations
-  Set.wasType = static_cast<WASType>(preferences.getUChar("wasType", static_cast<uint8_t>(WASType::ADS_1115_single)));
+  Set.wasType = static_cast<WASType>(preferences.getUChar("wasType", static_cast<uint8_t>(WASType::single)));
   
   // Load PID values
   Set.Kp = preferences.getFloat("Kp", 20.0);
@@ -76,7 +75,6 @@ void saveSettings() {
   
   // Save autosteer settings
   preferences.putUChar("steerConfig", static_cast<uint8_t>(Set.steerConfig));
-  preferences.putUChar("imuType", static_cast<uint8_t>(Set.imuType));
   preferences.putUChar("imuAddr", Set.imuAddress);
   preferences.putBool("invertWAS", Set.invertWAS);
   preferences.putBool("invertSteer", Set.invertSteer);
@@ -112,10 +110,6 @@ bool writeSetting(const char* key, const char* value) {
   if (strcmp(key, "steerConfig") == 0) {
     Set.steerConfig = static_cast<SteerConfig>(atoi(value));
     preferences.putUChar(key, static_cast<uint8_t>(Set.steerConfig));
-  }
-  else if (strcmp(key, "imuType") == 0) {
-    Set.imuType = static_cast<IMUType>(atoi(value));
-    preferences.putUChar(key, static_cast<uint8_t>(Set.imuType));
   }
   else if (strcmp(key, "invertWAS") == 0) {
     Set.invertWAS = (strcmp(value, "1") == 0 || strcmp(value, "true") == 0);

@@ -1,12 +1,12 @@
 #ifndef UDP_IO_H
 #define UDP_IO_H
 
-#include <Arduino.h>
+#include <cstdint>
+#include <cstdio>
 #include "networking.h"
 
 // Function declarations
 bool initAutosteerCommunication(bool(*send_func_)(const uint8_t*, size_t), ip_address our_ip_);
-void updateUDPCommunication();
 void processReceivedPacket(const uint8_t* data, size_t len, ip_address sourceIP);
 
 // Helper functions
@@ -15,7 +15,7 @@ bool verifyPacketCRC(const uint8_t* data, size_t length);
 AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float roll, bool switchStatus, uint8_t pwmDisplay);
 AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue);
 HelloReplyPacket createHelloReplyPacket(float actualSteerAngle, uint16_t sensorCounts, bool switchStatus);
-SubnetReplyPacket createSubnetReplyPacket(const ip_address deviceIP, const ip_address sourceIP);
+SubnetReplyPacket createSubnetReplyPacket(ip_address deviceIP, ip_address sourceIP);
 
 // Send data functions
 bool sendAutoSteerData(float actualSteerAngle, float heading, float roll,

@@ -14,7 +14,7 @@
   bool steerEnable = false;
   int pulseCount = 0; //TODO:IMPLEMENT ENCODER
   for (;;) {
-    bool hwEnable = buttons::steer_button_enabled();
+    bool hwEnable = buttons::isAutoSteerEnabled();
     bool swEnable = getSwSwitchStatus();
     if (hwEnable && swEnable) {
       steerEnable = true;
@@ -83,5 +83,5 @@ void initAutosteer() {
 
 // Get the combined steer switch state (physical button and software switch)
 bool getSteerSwitchState() {
-  return buttons::steer_button_enabled();
+  return buttons::isAutoSteerEnabled();
 }
