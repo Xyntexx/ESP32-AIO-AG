@@ -32,4 +32,4 @@ void errorf(const char* format, ...);
 
 // Initialization functions
 bool initLogging();
-bool initUDPLogging(uint16_t udpPort = 8888);
+bool initUDPLogging(uint16_t udpPort = 7777);

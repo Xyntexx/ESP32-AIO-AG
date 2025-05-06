@@ -3,7 +3,6 @@
 #include <cstdint>
 
 namespace imu {
-constexpr uint32_t default_delay = 100; // 100ms
 
 float get_heading();
 

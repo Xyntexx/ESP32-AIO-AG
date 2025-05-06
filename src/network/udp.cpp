@@ -1,46 +1,38 @@
 #include "udp.h"
+#include "../autosteer/udp_io.h"
+#include "../gps/gps_module.h"
 
 #include <AsyncUDP.h>
+#include <WiFi.h>
 
-AsyncUDP async_udp;
-static void (*udpReceiveCallback)(AsyncUDPPacket packet) = nullptr;
+#include "config/defines.h"
+#include "utils/log.h"
 
-// Variables to store the last sender's info
-static IPAddress last_sender_ip(0, 0, 0, 0);
-static uint16_t last_sender_port = 0;
+AsyncUDP autosteer_udp;
+AsyncUDP gps_udp;
 
-// Initialize AsyncUDP
-bool initUDP(uint16_t listeningPort) {
-    if (async_udp.listen(listeningPort)) {
-        // Set up the onPacket handler
-        async_udp.onPacket([](AsyncUDPPacket packet) {
-            // Call the user-defined callback if set
-            if (udpReceiveCallback != nullptr) {
-                udpReceiveCallback(packet);
-            }
-        });
-        return true;
-    }
-    return false;
+// Function to convert IPAddress to ip_address
+ip_address ipAddressToIpAddress(const IPAddress& addr);
+
+// Get the device's IP address
+ip_address getIP() {
+    IPAddress localIP = WiFi.localIP();
+    return ipAddressToIpAddress(localIP);
 }
 
-// Send UDP packet to a specific IP and port
-bool sendUDPPacket(const IPAddress& remoteIP, uint16_t remotePort, const uint8_t* data, size_t len) {
-    if (!async_udp.connected()) {
-        return false;
-    }
-    
-    // Create an AsyncUDPMessage and copy the data into it
-    AsyncUDPMessage message;
-    message.write(data, len);
-    
-    // Send the message
-    return async_udp.sendTo(message, remoteIP, remotePort) > 0;
+// Function to convert IPAddress to ip_address
+ip_address ipAddressToIpAddress(const IPAddress& addr) {
+    ip_address result;
+    result.ip[0] = addr[0];
+    result.ip[1] = addr[1];
+    result.ip[2] = addr[2];
+    result.ip[3] = addr[3];
+    return result;
 }
 
 // Send UDP packet to a broadcast address
 bool broadcastUDPPacket(uint16_t remotePort, const uint8_t* data, size_t len) {
-    if (!async_udp.connected()) {
+    if (!autosteer_udp.connected()) {
         return false;
     }
     
@@ -49,29 +41,45 @@ bool broadcastUDPPacket(uint16_t remotePort, const uint8_t* data, size_t len) {
     message.write(data, len);
     
     // Send the message to the broadcast address
-    return async_udp.broadcastTo(message, remotePort) > 0;
+    return autosteer_udp.broadcastTo(message, remotePort) > 0;
 }
 
-// Get last sender's IP address
-IPAddress getLastSenderIP() {
-    return last_sender_ip;
+// UDP packet sending function for autosteer
+static bool sendUDPPacketForAutosteer(const uint8_t* data, size_t len) {
+    return broadcastUDPPacket(AgOpenGPS_UDP_PORT, data, len);
 }
 
-// Get last sender's port
-uint16_t getLastSenderPort() {
-    return last_sender_port;
+// UDP packet sending function for GPS
+static bool sendUDPPacketForGPS(const uint8_t* data, size_t len) {
+    return broadcastUDPPacket(AgOpenGPS_UDP_PORT, data, len);
 }
 
-// Update the setUDPReceiveCallback function to also store sender information
-void setUDPReceiveCallback(void (*callback)(AsyncUDPPacket packet)) {
-    // Set the callback that also captures sender information
-    async_udp.onPacket([callback](AsyncUDPPacket packet) {
-        // Store sender information
-        last_sender_ip = packet.remoteIP();
-        last_sender_port = packet.remotePort();
-        
-        // Call the actual callback
-        callback(packet);
-    });
+bool init_autosteer_udp() {
+    autosteer_udp.listen(AgOpenGPS_UDP_PORT);
+    initAutosteerCommunication(sendUDPPacketForAutosteer, getIP());
+    autosteer_udp.onPacket([](AsyncUDPPacket packet) {
+            // Convert IPAddress to ip_address for autosteer
+            ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());
+            processReceivedPacket(packet.data(), packet.length(), sourceIP);
+        });
+    return true;
 }
 
+bool init_gps_udp() {
+    gps_udp.listen(GPS_UDP_PORT);
+    initGpsCommunication(sendUDPPacketForGPS, getIP());
+    gps_udp.onPacket([](AsyncUDPPacket packet) {
+            // Convert IPAddress to ip_address for GPS
+            ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());
+            gps::process_udp_message(packet.data(), packet.length(), sourceIP);
+        });
+    return true;
+}
+
+// Initialize AsyncUDP
+bool initUDP() {
+    bool success = true;
+    success &= init_autosteer_udp();
+    success &= init_gps_udp();
+    return success;
+}

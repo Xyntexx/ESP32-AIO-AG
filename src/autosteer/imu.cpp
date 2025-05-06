@@ -9,6 +9,7 @@ namespace imu {
 float heading = 0.0;
 float roll    = 0.0;
 float pitch   = 0.0;
+constexpr uint32_t default_delay = 1000;
 
 [[noreturn]] void imu_task_loop(void *pv_parameters) {
     for (;;) {

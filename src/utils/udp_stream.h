@@ -12,7 +12,7 @@ private:
     bool initialized;
 
 public:
-    UDPStream(IPAddress broadcastAddr = IPAddress(255, 255, 255, 255), uint16_t port = 8888)
+    UDPStream(IPAddress broadcastAddr = IPAddress(255, 255, 255, 255), uint16_t port = 7777)
         : broadcastAddress(broadcastAddr), port(port), initialized(false) {}
 
     bool begin() {
