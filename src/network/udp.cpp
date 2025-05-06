@@ -55,7 +55,7 @@ static bool sendUDPPacketForGPS(const uint8_t* data, size_t len) {
 }
 
 bool init_autosteer_udp() {
-    autosteer_udp.listen(AgOpenGPS_UDP_PORT);
+    autosteer_udp.listen(STEER_UDP_PORT);
     initAutosteerCommunication(sendUDPPacketForAutosteer, getIP());
     autosteer_udp.onPacket([](AsyncUDPPacket packet) {
             // Convert IPAddress to ip_address for autosteer
