@@ -50,8 +50,8 @@ AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float
     packet.reserved2        = 0;
 
     // Calculate CRC
-    uint8_t *crc_start_byte = reinterpret_cast<uint8_t *>(&packet) + CRC_START_BYTE; // Skip header, pgn, length
-    int crc_length = sizeof(packet) - CRC_START_BYTE - 1; // Exclude header and PGN
+    uint8_t *crc_start_byte = reinterpret_cast<uint8_t *>(&packet) + 2; // Skip header, pgn, length
+    int crc_length = sizeof(packet) - OUTGOING_CRC_START_BYTE - 2; // Exclude header and PGN
     packet.crc       = calculateCRC(crc_start_byte, crc_length);
 
     return packet;
@@ -72,10 +72,12 @@ AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue) {
     packet.reserved5 = 0;
     packet.reserved6 = 0;
     packet.reserved7 = 0;
+    packet.reserved8 = 0;
+    packet.reserved9 = 0;
 
     // Calculate CRC
-    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + CRC_START_BYTE;
-    int crc_length = sizeof(packet) - CRC_START_BYTE - 1;
+    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + OUTGOING_CRC_START_BYTE;
+    int crc_length = sizeof(packet) - OUTGOING_CRC_START_BYTE - 1;
     packet.crc       = calculateCRC(payload, crc_length);
 
     return packet;
@@ -117,8 +119,8 @@ SubnetReplyPacket createSubnetReplyPacket(const ip_address deviceIP, const ip_ad
     packet.srcThree = deviceIP.ip[2];
 
     // Calculate CRC (skipping header, pgn, and length)
-    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + CRC_START_BYTE; // Skip header, pgn, length
-    int crc_length = sizeof(packet) - CRC_START_BYTE - 1; // Exclude header and PGN
+    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + OUTGOING_CRC_START_BYTE; // Skip header, pgn, length
+    int crc_length = sizeof(packet) - OUTGOING_CRC_START_BYTE - 1; // Exclude header and PGN
     packet.crc       = calculateCRC(payload, crc_length);
 
     return packet;
@@ -134,7 +136,7 @@ bool verifyPacketCRC(const uint8_t *data, size_t length) {
     uint8_t receivedCrc = data[5 + packetLength]; // CRC is after header(3) + pgn(1) + length(1) + payload(N)
 
     // Calculate CRC on payload bytes
-    uint8_t calculatedCrc = calculateCRC(data + CRC_START_BYTE, length - CRC_START_BYTE - 1); // Exclude the CRC byte itself
+    uint8_t calculatedCrc = calculateCRC(data + INCOMING_CRC_START_BYTE, length - INCOMING_CRC_START_BYTE - 1); // Exclude the CRC byte itself
     auto valid = calculatedCrc == receivedCrc;
     if (!valid) {
         debugf("CRC mismatch: calculated=0x%02X, received=0x%02X", calculatedCrc, receivedCrc);
@@ -163,8 +165,6 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
     uint8_t pgn          = data[3];
     uint8_t packetLength = data[4];
 
-    debugf("Received packet: PGN=%d, Length=%d, TotalLen=%d", pgn, packetLength, len);
-
     // Make sure we have complete packet
     if (len < packetLength + 6) {
         debugf("Incomplete packet: expected %d bytes, got %d", packetLength + 6, len);
@@ -176,8 +176,6 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
         debugf("CRC verification failed for PGN %d", pgn);
         return; // Invalid CRC
     }
-    
-    debugf("CRC verified successfully for PGN %d", pgn);
 
     switch (pgn) {
         case PGN_STEER_DATA: {
@@ -217,9 +215,7 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 // Send response packets
                 bool sent1 = sendAutoSteerData(actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
                 bool sent2 = sendAutoSteer2Data(sensorValue);
-                
-                debugf("Response packets sent: AutoSteerData=%s, AutoSteer2Data=%s", 
-                       sent1 ? "OK" : "FAILED", sent2 ? "OK" : "FAILED");
+
             } else {
                 debugf("SteerData packet too small: %d < %d bytes", len, sizeof(SteerData));
             }

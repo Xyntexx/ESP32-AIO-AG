@@ -13,7 +13,8 @@ struct ip_address {
 // Common definitions
 #define HEADER_LENGTH 3 // includes length byte
 #define PAYLOAD_LENGTH 8
-#define CRC_START_BYTE 2
+#define INCOMING_CRC_START_BYTE 2
+#define OUTGOING_CRC_START_BYTE 0
 
 
 // Packet header bytes
@@ -122,7 +123,9 @@ struct AutoSteerData2 {
     uint8_t reserved5;       // Byte 8: Reserved
     uint8_t reserved6;       // Byte 9: Reserved
     uint8_t reserved7;       // Byte 10: Reserved
-    uint8_t crc;             // Byte 11: CRC
+    uint8_t reserved8;       // Byte 11: Reserved
+    uint8_t reserved9;       // Byte 12: Reserved
+    uint8_t crc;             // Byte 13: CRC
 };
 
 struct HelloReplyPacket {
@@ -152,5 +155,14 @@ struct SubnetReplyPacket {
 };
 #pragma pack()
 
+static_assert(sizeof(AutoSteerData) == 14, "AutoSteerData size mismatch");
+static_assert(sizeof(AutoSteerData2) == 14, "AutoSteerData2 size mismatch");
+static_assert(sizeof(SteerData) == 14, "SteerData size mismatch");
+static_assert(sizeof(SteerSettings) == 14, "SteerSettings size mismatch");
+static_assert(sizeof(SteerConfigPacket) == 14, "SteerConfigPacket size mismatch");
+static_assert(sizeof(HelloModulePacket) == 9, "HelloModulePacket size mismatch");
+static_assert(sizeof(ScanRequestPacket) == 9, "ScanRequestPacket size mismatch");
+static_assert(sizeof(HelloReplyPacket) == 9, "HelloReplyPacket size mismatch");
+static_assert(sizeof(SubnetReplyPacket) == 11, "SubnetReplyPacket size mismatch");
 
 #endif //NETWORKING_H

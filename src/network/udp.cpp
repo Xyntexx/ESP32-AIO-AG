@@ -31,8 +31,8 @@ ip_address ipAddressToIpAddress(const IPAddress& addr) {
 }
 
 // Send UDP packet to a broadcast address
-bool broadcastUDPPacket(uint16_t remotePort, const uint8_t* data, size_t len) {
-    if (!autosteer_udp.connected()) {
+bool broadcastUDPPacket(AsyncUDP udp, uint16_t remotePort, const uint8_t* data, size_t len) {
+    if (!udp.connected()) {
         return false;
     }
     
@@ -41,18 +41,17 @@ bool broadcastUDPPacket(uint16_t remotePort, const uint8_t* data, size_t len) {
     message.write(data, len);
     
     // Send the message to the broadcast address
-    return autosteer_udp.broadcastTo(message, remotePort) > 0;
+    return udp.broadcastTo(message, remotePort) > 0;
 }
 
 // UDP packet sending function for autosteer
 static bool sendUDPPacketFromAutosteer(const uint8_t* data, size_t len) {
-    debugf ("Sending UDP packet from: %d bytes", len);
-    return broadcastUDPPacket(AgOpenGPS_UDP_PORT, data, len);
+    return broadcastUDPPacket(autosteer_udp, AgOpenGPS_UDP_PORT, data, len);
 }
 
 // UDP packet sending function for GPS
 static bool sendUDPPacketFromGPS(const uint8_t* data, size_t len) {
-    return broadcastUDPPacket(AgOpenGPS_UDP_PORT, data, len);
+    return broadcastUDPPacket(gps_udp, AgOpenGPS_UDP_PORT, data, len);
 }
 
 bool init_autosteer_udp() {
