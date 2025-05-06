@@ -147,14 +147,3 @@ void initGpsCommunication(bool (*send_func)(const uint8_t*, size_t), const ip_ad
     gps::set_udp_sender(send_func);
 }
 
-// GPS UART check task - monitors serial connection status
-[[noreturn]] void gps_uart_check_task(void *pvParameters) {
-    debug("GPS UART check task started");
-    for (;;) {
-        // If GPS was disconnected, try to reconnect
-        if (!gpsConnected) {
-            gps::init();
-        }
-        delay(5000); // Check every 5 seconds
-    }
-}

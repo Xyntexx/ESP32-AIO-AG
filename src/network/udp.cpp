@@ -45,29 +45,32 @@ bool broadcastUDPPacket(uint16_t remotePort, const uint8_t* data, size_t len) {
 }
 
 // UDP packet sending function for autosteer
-static bool sendUDPPacketForAutosteer(const uint8_t* data, size_t len) {
+static bool sendUDPPacketFromAutosteer(const uint8_t* data, size_t len) {
+    debugf ("Sending UDP packet from: %d bytes", len);
     return broadcastUDPPacket(AgOpenGPS_UDP_PORT, data, len);
 }
 
 // UDP packet sending function for GPS
-static bool sendUDPPacketForGPS(const uint8_t* data, size_t len) {
+static bool sendUDPPacketFromGPS(const uint8_t* data, size_t len) {
     return broadcastUDPPacket(AgOpenGPS_UDP_PORT, data, len);
 }
 
 bool init_autosteer_udp() {
     autosteer_udp.listen(STEER_UDP_PORT);
-    initAutosteerCommunication(sendUDPPacketForAutosteer, getIP());
+    debugf("Listening for autosteer UDP on port %d", STEER_UDP_PORT);
+    initAutosteerCommunication(sendUDPPacketFromAutosteer, getIP());
     autosteer_udp.onPacket([](AsyncUDPPacket packet) {
-            // Convert IPAddress to ip_address for autosteer
-            ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());
-            processReceivedPacket(packet.data(), packet.length(), sourceIP);
+        // Convert IPAddress to ip_address for autosteer
+        ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());
+        processReceivedPacket(packet.data(), packet.length(), sourceIP);
         });
     return true;
 }
 
 bool init_gps_udp() {
     gps_udp.listen(GPS_UDP_PORT);
-    initGpsCommunication(sendUDPPacketForGPS, getIP());
+    debugf("Listening for GPS UDP on port %d", GPS_UDP_PORT);
+    initGpsCommunication(sendUDPPacketFromGPS, getIP());
     gps_udp.onPacket([](AsyncUDPPacket packet) {
             // Convert IPAddress to ip_address for GPS
             ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());

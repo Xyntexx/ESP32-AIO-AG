@@ -15,9 +15,6 @@ ADS1115_lite ads1115;
 //loop for WAS
 // Loop triggers every 20 msec
 [[noreturn]] void wheel_angle_sensor_task(void *pv_parameters) {
-    TickType_t last_wake_time              = xTaskGetTickCount();
-    constexpr TickType_t trigger_increment = pdMS_TO_TICKS(20);
-
     // Start the first conversion for the first read
     if (Set.wasType == WASType::ADS_1115_single || Set.wasType == WASType::ADS_1115_diff) {
         I2C_MUTEX_LOCK();
@@ -66,7 +63,7 @@ ADS1115_lite ads1115;
                 warning("WAS type not supported");
                 break;
         }
-        xTaskDelayUntil(&last_wake_time, trigger_increment);
+        delay(20);
     }
 }
 

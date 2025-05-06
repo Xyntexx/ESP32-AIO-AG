@@ -5,6 +5,7 @@
 #include "imu.h"
 #include "autosteer.h"
 #include "motor.h"
+#include "utils/log.h"
 
 // Global variables
 uint32_t lastDataReceived                  = 0;
@@ -26,7 +27,7 @@ bool initAutosteerCommunication(bool (*send_func_)(const uint8_t *, size_t), ip_
     return true;
 }
 
-// Calculate CRC for a given data array
+// Calculate CRC for a given data array - this will be our single unified CRC function
 uint8_t calculateCRC(const uint8_t *data, size_t length) {
     uint8_t crc = 0;
     for (size_t i = 0; i < length; i++) {
@@ -48,9 +49,10 @@ AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float
     packet.reserved1        = 0;
     packet.reserved2        = 0;
 
-    // Calculate CRC (skipping header, pgn, and length)
-    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + 3; // Skip header, pgn, length
-    packet.crc       = calculateCRC(payload, PAYLOAD_LENGTH);
+    // Calculate CRC
+    uint8_t *crc_start_byte = reinterpret_cast<uint8_t *>(&packet) + CRC_START_BYTE; // Skip header, pgn, length
+    int crc_length = sizeof(packet) - CRC_START_BYTE - 1; // Exclude header and PGN
+    packet.crc       = calculateCRC(crc_start_byte, crc_length);
 
     return packet;
 }
@@ -71,9 +73,10 @@ AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue) {
     packet.reserved6 = 0;
     packet.reserved7 = 0;
 
-    // Calculate CRC (skipping header, pgn, and length)
-    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + 3; // Skip header, pgn, length
-    packet.crc       = calculateCRC(payload, PAYLOAD_LENGTH);
+    // Calculate CRC
+    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + CRC_START_BYTE;
+    int crc_length = sizeof(packet) - CRC_START_BYTE - 1;
+    packet.crc       = calculateCRC(payload, crc_length);
 
     return packet;
 }
@@ -114,8 +117,9 @@ SubnetReplyPacket createSubnetReplyPacket(const ip_address deviceIP, const ip_ad
     packet.srcThree = deviceIP.ip[2];
 
     // Calculate CRC (skipping header, pgn, and length)
-    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + 3; // Skip header, pgn, length
-    packet.crc       = calculateCRC(payload, packet.length);
+    uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + CRC_START_BYTE; // Skip header, pgn, length
+    int crc_length = sizeof(packet) - CRC_START_BYTE - 1; // Exclude header and PGN
+    packet.crc       = calculateCRC(payload, crc_length);
 
     return packet;
 }
@@ -130,22 +134,27 @@ bool verifyPacketCRC(const uint8_t *data, size_t length) {
     uint8_t receivedCrc = data[5 + packetLength]; // CRC is after header(3) + pgn(1) + length(1) + payload(N)
 
     // Calculate CRC on payload bytes
-    uint8_t calculatedCrc = 0;
-    for (uint8_t i = 0; i < packetLength; i++) {
-        calculatedCrc += data[5 + i]; // Start after header(3) + pgn(1) + length(1)
+    uint8_t calculatedCrc = calculateCRC(data + CRC_START_BYTE, length - CRC_START_BYTE - 1); // Exclude the CRC byte itself
+    auto valid = calculatedCrc == receivedCrc;
+    if (!valid) {
+        debugf("CRC mismatch: calculated=0x%02X, received=0x%02X", calculatedCrc, receivedCrc);
     }
 
-    return calculatedCrc == receivedCrc;
+    return valid;
 }
 
 // Parse and process received packets
 void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP) {
     // Check if packet is long enough for header + PGN + length
-    if (len < 5) return;
+    if (len < 5) {
+        debugf("Received packet too short (len=%d)", len);
+        return;
+    }
 
     // Check header (first 3 bytes)
     for (uint8_t i = 0; i < 3; i++) {
         if (data[i] != AOG_HEADER[i]) {
+            debugf("Invalid header byte %d: 0x%02X (expected 0x%02X)", i, data[i], AOG_HEADER[i]);
             return; // Invalid header
         }
     }
@@ -154,13 +163,21 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
     uint8_t pgn          = data[3];
     uint8_t packetLength = data[4];
 
+    debugf("Received packet: PGN=%d, Length=%d, TotalLen=%d", pgn, packetLength, len);
+
     // Make sure we have complete packet
-    if (len < packetLength + 6) return; // 3(header) + 1(pgn) + 1(length) + payload + 1(crc)
+    if (len < packetLength + 6) {
+        debugf("Incomplete packet: expected %d bytes, got %d", packetLength + 6, len);
+        return; // 3(header) + 1(pgn) + 1(length) + payload + 1(crc)
+    }
 
     // Verify CRC
     if (!verifyPacketCRC(data, len)) {
+        debugf("CRC verification failed for PGN %d", pgn);
         return; // Invalid CRC
     }
+    
+    debugf("CRC verified successfully for PGN %d", pgn);
 
     switch (pgn) {
         case PGN_STEER_DATA: {
@@ -180,6 +197,9 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 
                 sectionControlByte = steerData->sectionLo;
 
+                debugf("Parsed SteerData: speed=%.1f, status=%d, angle=%.2f", 
+                       gpsSpeed, guidanceStatus, steerAngleSetPoint);
+
                 // Update timestamps and flags
                 lastDataReceived = millis();
 
@@ -191,9 +211,17 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 uint8_t pwmDisplay = motor::getCurrentPWM();
                 uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
 
+                debugf("Sending response: angle=%.2f, heading=%.1f, roll=%.1f, switch=%d, pwm=%d", 
+                       actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
+
                 // Send response packets
-                sendAutoSteerData(actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
-                sendAutoSteer2Data(sensorValue);
+                bool sent1 = sendAutoSteerData(actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
+                bool sent2 = sendAutoSteer2Data(sensorValue);
+                
+                debugf("Response packets sent: AutoSteerData=%s, AutoSteer2Data=%s", 
+                       sent1 ? "OK" : "FAILED", sent2 ? "OK" : "FAILED");
+            } else {
+                debugf("SteerData packet too small: %d < %d bytes", len, sizeof(SteerData));
             }
             break;
         }
@@ -202,10 +230,12 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             // Process steer settings packet
             if (len >= sizeof(SteerSettings)) {
                 const SteerSettings *settings = reinterpret_cast<const SteerSettings *>(data);
-
+                debugf("Received steer settings packet (not implemented yet)");
                 // Handle settings here - just a stub for now
                 // Example: Set PID values, PWM settings, etc.
                 // For future implementation
+            } else {
+                debugf("SteerSettings packet too small: %d < %d bytes", len, sizeof(SteerSettings));
             }
             break;
         }
@@ -214,10 +244,12 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             // Process steer config packet
             if (len >= sizeof(SteerConfigPacket)) {
                 const SteerConfigPacket *config = reinterpret_cast<const SteerConfigPacket *>(data);
-
+                debugf("Received steer config packet (not implemented yet)");
                 // Handle configuration here - just a stub for now
                 // Example: Set device modes, steer switch types, etc.
                 // For future implementation
+            } else {
+                debugf("SteerConfig packet too small: %d < %d bytes", len, sizeof(SteerConfigPacket));
             }
             break;
         }
@@ -229,14 +261,24 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 
                 // Check if the hello is for this module (module ID 126 = steer module)
                 if (helloPacket->moduleId == 126) {
+                    debugf("Received Hello packet for steer module (ID=126)");
+                    
                     // Get current sensor values
                     float actualSteerAngle = was::get_steering_angle();
                     uint16_t sensorCounts  = was::get_wheel_angle_sensor_counts();
                     bool switchStatus      = getSteerSwitchState();
 
+                    debugf("Sending HelloReply: angle=%.2f, counts=%d, switch=%d", 
+                           actualSteerAngle, sensorCounts, switchStatus);
+
                     // Send hello reply
-                    sendHelloReply(actualSteerAngle, sensorCounts, switchStatus);
+                    bool sent = sendHelloReply(actualSteerAngle, sensorCounts, switchStatus);
+                    debugf("HelloReply sent: %s", sent ? "OK" : "FAILED");
+                } else {
+                    debugf("Ignored Hello packet for module ID %d (not for us)", helloPacket->moduleId);
                 }
+            } else {
+                debugf("HelloModule packet too small: %d < %d bytes", len, sizeof(HelloModulePacket));
             }
             break;
         }
@@ -246,17 +288,28 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             if (len >= sizeof(ScanRequestPacket)) {
                 const ScanRequestPacket *scanPacket = reinterpret_cast<const ScanRequestPacket *>(data);
 
+                debugf("Received scan request: values=%d,%d,%d", 
+                       scanPacket->scanValue1, scanPacket->scanValue2, scanPacket->scanValue3);
+
                 // Verify the scan request values (202, 202, 5)
                 if (scanPacket->scanValue1 == 202 && scanPacket->scanValue2 == 202 && scanPacket->scanValue3 == 5) {
+                    debugf("Valid scan request detected, sending subnet reply");
+                    
                     // Send subnet reply
-                    sendSubnetReply(our_ip, sourceIP);
+                    bool sent = sendSubnetReply(our_ip, sourceIP);
+                    debugf("SubnetReply sent: %s", sent ? "OK" : "FAILED");
+                } else {
+                    debugf("Invalid scan request values");
                 }
+            } else {
+                debugf("ScanRequest packet too small: %d < %d bytes", len, sizeof(ScanRequestPacket));
             }
             break;
         }
 
         default:
             // Unknown packet type - ignore
+            debugf("Unknown PGN received: %d", pgn);
             break;
     }
 }

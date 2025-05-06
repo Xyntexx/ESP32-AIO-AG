@@ -12,8 +12,8 @@
 [[noreturn]] void autoSteerTask(void *pvParameters) {
   bool prevSteerEnable = false;
   bool steerEnable = false;
-  int pulseCount = 0;
-  while (true) {
+  int pulseCount = 0; //TODO:IMPLEMENT ENCODER
+  for (;;) {
     bool hwEnable = buttons::steer_button_enabled();
     bool swEnable = getSwSwitchStatus();
     if (hwEnable && swEnable) {

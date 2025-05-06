@@ -13,7 +13,8 @@ struct ip_address {
 // Common definitions
 #define HEADER_LENGTH 3 // includes length byte
 #define PAYLOAD_LENGTH 8
-#define CRC_LENGTH 1
+#define CRC_START_BYTE 2
+
 
 // Packet header bytes
 const uint8_t AOG_HEADER[] = {0x80, 0x81, 0x7F}; // Header for packets from AOG
