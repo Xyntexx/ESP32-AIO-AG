@@ -59,16 +59,6 @@ void initAutosteer() {
     success = false;
   }
   
-  if (!was::init()) {  // Initialize wheel angle sensor
-    error("Failed to initialize wheel angle sensor");
-    success = false;
-  }
-  
-  if (!imu::init()) {  // Initialize IMU
-    error("Failed to initialize IMU");
-    success = false;
-  }
-  
   if (!motor::init()) {  // Initialize motor control
     error("Failed to initialize motor controller");
     success = false;

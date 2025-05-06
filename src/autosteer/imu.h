@@ -1,16 +1,23 @@
 #ifndef IMU_H
 #define IMU_H
-#include <cstdint>
+
+#include <stdint.h>
 
 namespace imu {
+    // Function pointer types for hardware implementation
+    using ReadFunc = float (*)();
 
-float get_heading();
+    // Interface structure for hardware implementation
+    struct IMUInterface {
+        ReadFunc heading;
+        ReadFunc roll;
+    };
 
-float get_roll();
+    // Function declarations
+    bool init(const IMUInterface& hw);
 
-float get_pitch();
-
-bool init();
+    float get_heading();
+    float get_roll();
 }
 
 #endif //IMU_H

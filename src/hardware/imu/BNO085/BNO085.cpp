@@ -1,6 +1,6 @@
 #include "BNO085.h"
-#include "../../utils/log.h"
-#include "../i2c_manager.h"
+#include "utils/log.h"
+#include "hardware/i2c_manager.h"
 
 BNO085 bno08x;
 
@@ -107,10 +107,6 @@ bool BNO085::dataAvailable() {
 
 bool BNO085::wasReset() {
     return _bno.wasReset();
-}
-
-void BNO085::delay(uint32_t ms) {
-    ::delay(ms);
 }
 
 float BNO085::getYaw(sh2_RotationVectorWAcc_t *rv) {

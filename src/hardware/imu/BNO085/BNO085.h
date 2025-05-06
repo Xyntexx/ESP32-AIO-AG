@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_BNO08x.h>
+#include "Adafruit_BNO08x.h"
 
 #define BNO085_I2C_ADDR BNO08x_I2CADDR_DEFAULT
 #define CONST_180_DIVIDED_BY_PI 57.2957795130823

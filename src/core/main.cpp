@@ -5,6 +5,8 @@
 #include "WebServer_ESP32_SC_W6100.h"
 #include "network/udp.h"
 #include "../hardware/i2c_manager.h"
+#include "hardware/hardware.h"
+#include "tasks.h"
 
 void setup() {
   // Initialize basic logging first
@@ -30,11 +32,17 @@ void setup() {
   debug("Ethernet initialized");
   initUDPLogging();
 
+  hw::init();
+  debug("Hardware initialized");
+
   initAutosteer();
   debug("Autosteer initialized");
 
   initUDP();
   debug("UDP initialized");
+
+  create_tasks();
+  debug("Tasks created");
 
   info("System ready");
 }
