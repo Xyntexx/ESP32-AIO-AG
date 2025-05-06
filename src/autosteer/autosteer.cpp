@@ -58,12 +58,6 @@ void initAutosteer() {
     error("Failed to initialize buttons");
     success = false;
   }
-  
-  if (!motor::init()) {  // Initialize motor control
-    error("Failed to initialize motor controller");
-    success = false;
-  }
-
   // Start the autosteer task
   TaskHandle_t autoSteerTaskHandle = NULL;
   BaseType_t taskCreated = xTaskCreate(

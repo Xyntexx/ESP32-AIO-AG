@@ -3,9 +3,7 @@
 //
 
 #include "motor.h"
-#include "../config/pinout.h"
 #include "utils/log.h"
-#include "udp_io.h"
 
 // Track initialization state
 static bool initialized = false;
@@ -13,70 +11,37 @@ static bool initialized = false;
 static uint8_t currentPWM = 0;
 
 namespace motor {
-bool init() {
-    if (initialized) return true;
+    // Static interface pointer
+    static MotorInterface* hw_interface = nullptr;
 
-    // Configure motor control pins
-    pinMode(MOTOR_ENABLE_PIN, OUTPUT);
-    pinMode(MOTOR_PWM_PIN, OUTPUT);
-    pinMode(MOTOR_DIR_PIN, OUTPUT);
-    pinMode(MOTOR_CURRENT_PIN, ANALOG);
+    bool init(const MotorInterface& hw) {
+        hw_interface = const_cast<MotorInterface*>(&hw);
+        return true;
+    }
+    /**
+     * Get current PWM value
+     */
+    uint8_t getCurrentPWM() {
+        if (hw_interface && hw_interface->getPwm) {
+            return hw_interface->getPwm();
+        }
+        return currentPWM;
+    }
 
-    // Initialize all pins to LOW (motor disabled & not moving)
-    digitalWrite(MOTOR_ENABLE_PIN, LOW);
-    digitalWrite(MOTOR_PWM_PIN, LOW);
-    digitalWrite(MOTOR_DIR_PIN, LOW);
-    
-    // Initialize PWM value
-    currentPWM = 0;
+    // Global functions used by autosteer
+    void driveMotor(uint8_t pwm, bool reversed) {
+        if (hw_interface && hw_interface->drive) {
+            hw_interface->drive(pwm, reversed);
+        } else {
+            error("Motor hardware interface not initialized");
+        }
+    }
 
-    initialized = true;
-    debugf("Motor initialized");
-    return true;
-}
-
-void drive(uint8_t pwm, bool reversed) {
-    if (!initialized) init();
-
-    // Set direction
-    digitalWrite(MOTOR_DIR_PIN, reversed ? LOW : HIGH);
-
-    // Set PWM speed
-    analogWrite(MOTOR_PWM_PIN, pwm);
-
-    // Enable motor
-    digitalWrite(MOTOR_ENABLE_PIN, HIGH);
-    
-    // Update the current PWM value for reporting
-    currentPWM = pwm;
-}
-
-void stop() {
-    if (!initialized) return;
-
-    // To coast (not brake), disable the motor driver
-    digitalWrite(MOTOR_ENABLE_PIN, LOW);
-
-    // Set PWM to 0
-    analogWrite(MOTOR_PWM_PIN, 0);
-    
-    // Update the current PWM value to 0
-    currentPWM = 0;
-}
-
-/**
- * Get current PWM value
- */
-uint8_t getCurrentPWM() {
-    return currentPWM;
-}
-
-// Global functions that use the motor namespace functions
-void driveMotor(uint8_t pwm, bool reversed) {
-    motor::drive(pwm, reversed);
-}
-
-void stopMotor() {
-    motor::stop();
-}
+    void stopMotor() {
+        if (hw_interface && hw_interface->stop) {
+            hw_interface->stop();
+        } else {
+            error("Motor hardware interface not initialized");
+        }
+    }
 }
