@@ -2,27 +2,28 @@
 
 #include "autosteer/autosteer.h"
 #include "autosteer/buttons.h"
+#include "gps/gps_module.h"
 #include "hardware/was/ads1115_was.h"
 #include "hardware/imu/bno08x_imu.h"
 #include "utils/log.h"
 
 [[noreturn]] void was_task(void *pv_parameters) {
     for (;;) {
-        //hw::ADS1115WAS::handler();
+        hw::ADS1115WAS::handler();
         vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz update rate
     }
 }
 
 [[noreturn]] void imu_task(void *pv_parameters) {
     for (;;) {
-        //hw::BNO08XIMU::handler();
+        hw::BNO08XIMU::handler();
         vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz update rate
     }
 }
 
 [[noreturn]] void buttons_task(void *pv_parameters) {
     for (;;) {
-        //buttons::handler();
+        buttons::handler();
         vTaskDelay(pdMS_TO_TICKS(100)); // 10Hz update rate
     }
 }
@@ -30,6 +31,13 @@
 [[noreturn]] void autoSteerTask(void *pv_parameters) {
     for (;;) {
         autosteer::handler();
+        vTaskDelay(pdMS_TO_TICKS(1)); // 1kHz update rate
+    }
+}
+
+[[noreturn]] void gpsTask(void *pv_parameters) {
+    for (;;) {
+        gps::handler();
         vTaskDelay(pdMS_TO_TICKS(1)); // 1kHz update rate
     }
 }
@@ -101,6 +109,17 @@ bool create_tasks() {
     if (taskCreated != pdPASS || autoSteerTaskHandle == nullptr) {
         error("Failed to create autoSteer task");
     }
+    delay(100);
+    debug("Creating GPS task...");
+    TaskHandle_t gpsTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        gpsTask,
+        "gpsTask",
+        2048,
+        NULL,
+        GPS_TASK_PRIORITY,
+        &gpsTaskHandle
+    );
     
     return true;
 }

@@ -223,9 +223,6 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 
                 sectionControlByte = steerData->sectionLo;
 
-                debugf("Parsed SteerData: speed=%.1f, status=%d, angle=%.2f", 
-                       gpsSpeed, guidanceStatus, steerAngleSetPoint);
-
                 // Update timestamps and flags
                 lastDataReceived = millis();
 
@@ -278,6 +275,9 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             break;
         }
         case PGN_CORRECTED_POSITION:
+        case PGN_FROM_IMU:
+        case PGN_FROM_MACHINE:
+        case PGN_64_SECTIONS:
             return;
 
         default:

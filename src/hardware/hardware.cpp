@@ -3,6 +3,7 @@
 #include "was/ads1115_was.h"
 #include "motor/pwm_motor.h"
 #include "buttons/buttons_hw.h"
+#include "gps/gps_module.h"
 #include "settings/settings_hw.h"
 
 namespace hw{
@@ -13,6 +14,7 @@ bool init(){
     BNO08XIMU::init(); // Init BNO first since they use the same i2c.
     ADS1115WAS::init();
     PWMMotor::init();
+    gps::init();
     return true;
 }
 

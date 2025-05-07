@@ -16,10 +16,11 @@ struct ip_address {
 #define INCOMING_CRC_START_BYTE 2
 #define OUTGOING_CRC_START_BYTE 2
 
+#define AOG_HEADER_BYTES {0x80, 0x81, 0x7F}
+
 
 // Packet header bytes
-const uint8_t AOG_HEADER[] = {0x80, 0x81, 0x7F}; // Header for packets from AOG
-const uint8_t AST_HEADER[] = {0x7E}; // Header for packets from AutoSteer
+const uint8_t AOG_HEADER[] = AOG_HEADER_BYTES; // Header for packets from AOG
 
 // PGN (Packet Group Numbers)
 const uint8_t PGN_STEER_DATA = 0xFE;    // 254 - Steer Data from AOG
@@ -31,12 +32,17 @@ const uint8_t PGN_HELLO_MODULE = 0xC8;   // 200 - Hello from AgIO to Module
 const uint8_t PGN_HELLO_REPLY = 0x7E;    // 126 - Hello Reply from Steer Module to AgIO
 const uint8_t PGN_SCAN_REQUEST = 0xCA;   // 202 - Scan request from AgIO
 const uint8_t PGN_SUBNET_REPLY = 0xCB;   // 203 - Subnet reply to AgIO
+//unused:
 const uint8_t PGN_CORRECTED_POSITION = 0x64; // 100 - Corrected position from AOG
+const uint8_t PGN_FROM_IMU = 0xD3; // 211 - IMU data from AOG
+const uint8_t PGN_FROM_MACHINE = 0xEF; // 239 - Machine data from AOG
+const uint8_t PGN_64_SECTIONS = 0xE5;
+
 
 // Packets received from AOG (AgOpenGPS)
 #pragma pack(1)
 struct SteerData {
-    const uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_STEER_DATA;
     uint8_t length = PAYLOAD_LENGTH;
     uint16_t speed;        // Bytes 5-6: Speed (little-endian)
@@ -49,7 +55,7 @@ struct SteerData {
 };
 
 struct SteerSettings {
-    const uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_STEER_SETTINGS;
     uint8_t length = PAYLOAD_LENGTH;
     uint8_t gainP;           // Byte 5: P gain
@@ -63,7 +69,7 @@ struct SteerSettings {
 };
 
 struct SteerConfigPacket {
-    const uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_STEER_CONFIG;
     uint8_t length = PAYLOAD_LENGTH;
     uint8_t set0;           // Byte 5: Settings byte 0
@@ -78,12 +84,12 @@ struct SteerConfigPacket {
 };
 
 struct HelloModulePacket {
-    const uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t data[6] = {200, 3, 56, 0, 0, 0x47};
 };
 
 struct ScanRequestPacket {
-    const uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t data[6] = {202, 3, 202, 202, 5, 0x47};
 };
 const HelloModulePacket helloModulePacket;
@@ -91,7 +97,7 @@ const ScanRequestPacket scanRequestPacket;
 
 // Packets sent to AOG (AgOpenGPS)
 struct AutoSteerData {
-    uint8_t header[1] = {0x7E};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_FROM_AUTOSTEER;
     uint8_t length = PAYLOAD_LENGTH;
     uint16_t actualSteerAngle; // Bytes 3-4: Actual steer angle * 100 (little-endian)
@@ -105,7 +111,7 @@ struct AutoSteerData {
 };
 
 struct AutoSteerData2 {
-    uint8_t header[1] = {0x7E};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_FROM_AUTOSTEER2;
     uint8_t length = PAYLOAD_LENGTH;
     uint8_t sensorValue;     // Byte 3: Sensor value
@@ -122,7 +128,7 @@ struct AutoSteerData2 {
 };
 
 struct HelloReplyPacket {
-    uint8_t header[1] = {0x7E};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_HELLO_REPLY;
     uint8_t length = 5;
     uint8_t angleLo;         // Byte 3: Angle Low byte
@@ -134,7 +140,7 @@ struct HelloReplyPacket {
 };
 
 struct SubnetReplyPacket {
-    uint8_t header[1] = {0x7E};
+    const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_SUBNET_REPLY;
     uint8_t length = 7;
     uint8_t ipOne;          // Byte 3: IP Address first octet
@@ -172,15 +178,15 @@ struct SubnetReplyPacket {
 
 #pragma pack()
 
-const size_t AutoSteerData_len = 14;
-const size_t AutoSteerData2_len = 14;
+const size_t AutoSteerData_len = 16;
+const size_t AutoSteerData2_len = 16;
 const size_t SteerData_len = 14;
 const size_t SteerSettings_len = 14;
 const size_t SteerConfigPacket_len = 14;
 const size_t HelloModulePacket_len = 9;
 const size_t ScanRequestPacket_len = 9;
-const size_t HelloReplyPacket_len = 9;
-const size_t SubnetReplyPacket_len = 11;
+const size_t HelloReplyPacket_len = 11;
+const size_t SubnetReplyPacket_len = 13;
 
 static_assert(sizeof(AutoSteerData) == AutoSteerData_len, "AutoSteerData size mismatch");
 static_assert(sizeof(AutoSteerData2) == AutoSteerData2_len, "AutoSteerData2 size mismatch");

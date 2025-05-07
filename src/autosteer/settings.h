@@ -13,9 +13,6 @@ struct Storage {
     // Steering configuration
     SteerConfig steerConfig = SteerConfig::MOTOR_DRIVE;
 
-    // IMU
-    uint8_t imuAddress = 0x28;
-
     // PID values
     float Kp = 20.0;
     float Ki = 0.5;
