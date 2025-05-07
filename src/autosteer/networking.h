@@ -4,6 +4,7 @@
 
 #ifndef NETWORKING_H
 #define NETWORKING_H
+#include <cstddef>
 
 // Define ip_address struct
 struct ip_address {
@@ -55,31 +56,39 @@ struct SteerData {
 };
 
 struct SteerSettings {
-    const uint8_t header[3] = AOG_HEADER_BYTES;
-    uint8_t pgn = PGN_STEER_SETTINGS;
-    uint8_t length = PAYLOAD_LENGTH;
     uint8_t gainP;           // Byte 5: P gain
     uint8_t highPWM;         // Byte 6: High PWM
     uint8_t lowPWM;          // Byte 7: Low PWM
     uint8_t minPWM;          // Byte 8: Min PWM
-    uint8_t countsPerDeg;    // Byte 9: Counts per degree
-    uint16_t steerOffset;    // Bytes 10-11: Steering offset (little-endian)
+    uint8_t steerSensorCounts;    // Byte 9: Counts per degree
+    uint16_t wasOffset;    // Bytes 10-11: Steering offset (little-endian)
     uint8_t ackermanFix;     // Byte 12: Ackerman fix
+};
+
+struct SteerSettingsPacket {
+    const uint8_t header[3] = AOG_HEADER_BYTES;
+    uint8_t pgn = PGN_STEER_SETTINGS;
+    uint8_t length = PAYLOAD_LENGTH;
+    SteerSettings settings; // Bytes 5-12: Steer settings
     uint8_t crc;             // Byte 13: CRC
+};
+
+struct SteerConfig {
+    uint8_t setting0;           // Byte 5: Settings byte 0
+    uint8_t pulseCountMax;     // Byte 6: Pulse count
+    uint8_t was_speed;       // Byte 7: Min speed
+    uint8_t setting1;           // Byte 8: Settings byte 1
+    uint8_t reserved1;      // Byte 9: Reserved
+    uint8_t reserved2;      // Byte 10: Reserved
+    uint8_t reserved3;      // Byte 11: Reserved
+    uint8_t reserved4;      // Byte 12: Reserved
 };
 
 struct SteerConfigPacket {
     const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_STEER_CONFIG;
     uint8_t length = PAYLOAD_LENGTH;
-    uint8_t set0;           // Byte 5: Settings byte 0
-    uint8_t pulseCount;     // Byte 6: Pulse count
-    uint8_t minSpeed;       // Byte 7: Min speed
-    uint8_t set1;           // Byte 8: Settings byte 1
-    uint8_t reserved1;      // Byte 9: Reserved
-    uint8_t reserved2;      // Byte 10: Reserved
-    uint8_t reserved3;      // Byte 11: Reserved
-    uint8_t reserved4;      // Byte 12: Reserved
+    SteerConfig config; // Bytes 5-12: Steer config
     uint8_t crc;            // Byte 13: CRC
 };
 
@@ -191,7 +200,7 @@ const size_t SubnetReplyPacket_len = 13;
 static_assert(sizeof(AutoSteerData) == AutoSteerData_len, "AutoSteerData size mismatch");
 static_assert(sizeof(AutoSteerData2) == AutoSteerData2_len, "AutoSteerData2 size mismatch");
 static_assert(sizeof(SteerData) == SteerData_len, "SteerData size mismatch");
-static_assert(sizeof(SteerSettings) == SteerSettings_len, "SteerSettings size mismatch");
+static_assert(sizeof(SteerSettingsPacket) == SteerSettings_len, "SteerSettings size mismatch");
 static_assert(sizeof(SteerConfigPacket) == SteerConfigPacket_len, "SteerConfigPacket size mismatch");
 static_assert(sizeof(HelloModulePacket) == HelloModulePacket_len, "HelloModulePacket size mismatch");
 static_assert(sizeof(ScanRequestPacket) == ScanRequestPacket_len, "ScanRequestPacket size mismatch");

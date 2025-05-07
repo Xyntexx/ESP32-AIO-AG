@@ -5,8 +5,8 @@
 
 enum class steer_switch_type_types:uint8_t {
     SWITCH = 1,
-    momentary = 2,
-    none = 255
+    BUTTON = 2,
+    NONE = 255
 };
 
 namespace buttons {

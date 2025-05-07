@@ -1,26 +1,29 @@
 #include "pid_controller.h"
+
+#include <cmath>
+
 #include "autosteer_config.h"
 #include "settings.h"
 
 // Calculate steering PID
 int calcSteeringPID(float steerAngleError) {
   //Proportional only
-  auto pValue = Set.Kp * steerAngleError;
+  auto pValue = Set.gainP * steerAngleError;
   int pwmDrive = pValue;
 
-  float errorAbs = abs(steerAngleError);
-  float newMax = 0;
+  float errorAbs = std::fabs(steerAngleError);
+  float newMax   = 0;
 
   if (errorAbs < LOW_HIGH_DEGREES)
   {
-    auto  highLowPerDeg = ((float)(Set.maxPWM - Set.minPWM)) / LOW_HIGH_DEGREES;
-    newMax = (errorAbs * highLowPerDeg) + Set.minPWM;
+    auto  highLowPerDeg = ((float)(Set.maxPWM - Set.lowPWM)) / LOW_HIGH_DEGREES;
+    newMax = (errorAbs * highLowPerDeg) + Set.lowPWM;
   }
   else newMax = Set.maxPWM;
 
   //add min throttle factor so no delay from motor resistance.
-  if (pwmDrive < 0) pwmDrive -= Set.minPWM;
-  else if (pwmDrive > 0) pwmDrive += Set.minPWM;
+  if (pwmDrive < 0) pwmDrive -= Set.lowPWM;
+  else if (pwmDrive > 0) pwmDrive += Set.lowPWM;
 
   //limit the pwm drive
   if (pwmDrive > newMax) pwmDrive = newMax;

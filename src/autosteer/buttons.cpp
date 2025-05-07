@@ -2,8 +2,6 @@
 
 #include "settings.h"
 #include "udp_io.h"
-#include "hardware/buttons/buttons_hw.h"
-#include "settings/settings.h"
 
 namespace buttons {
 // Static interface pointer
@@ -45,14 +43,14 @@ void handler() {
             steer_enable = btn_state;
             break;
 
-        case steer_switch_type_types::momentary: // Toggle on button release (when it was previously pressed)
+        case steer_switch_type_types::BUTTON: // Toggle on button release (when it was previously pressed)
             if (!btn_state && prev_momentary_state) {
                 steer_enable = !steer_enable;
             }
             prev_momentary_state = btn_state;
             break;
 
-        case steer_switch_type_types::none:
+        case steer_switch_type_types::NONE:
             // No physical switch - use software switch when valid guidance data is available
             if (!guidancePacketValid()) {
                 steer_enable    = false;

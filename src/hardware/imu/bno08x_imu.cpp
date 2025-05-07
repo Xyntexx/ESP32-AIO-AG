@@ -3,7 +3,6 @@
 #include "../../config/pinout.h"
 #include "../../config/defines.h"
 #include "../../hardware/i2c_manager.h"
-#include "../../settings/settings.h"
 #include "../../utils/log.h"
 
 namespace hw {

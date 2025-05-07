@@ -8,10 +8,10 @@
 #include <stdint.h>
 
 // Enum classes for settings
-enum class SteerConfig {
-    MOTOR_DRIVE = 0,
-    HYDRAULIC = 1,
-    PWM_DUAL_COIL = 2
+enum class DriverType {
+    cytron = 0,
+    ibt2 = 1,
+    danfoss = 2,
 };
 
 namespace motor {
@@ -34,6 +34,9 @@ namespace motor {
     void driveMotor(uint8_t pwm, bool reversed);
     void stopMotor();
     uint8_t getCurrentPWM();
+
+DriverType getDriverType();
+
 }
 
 #endif //MOTOR_H

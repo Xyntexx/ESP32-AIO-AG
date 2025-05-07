@@ -10,10 +10,16 @@ namespace imu {
     }
 
     float get_heading() {
+        if (!hw_interface.heading) {
+            return 0.0f;
+        }
         return hw_interface.heading();
     }
 
     float get_roll() {
+        if (!hw_interface.roll) {
+            return 0.0f;
+        }
         return hw_interface.roll();
     }
 }

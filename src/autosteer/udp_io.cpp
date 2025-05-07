@@ -6,6 +6,7 @@
 #include "autosteer.h"
 #include "buttons.h"
 #include "motor.h"
+#include "settings.h"
 #include "utils/log.h"
 
 // Global variables
@@ -249,14 +250,11 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 
         case PGN_STEER_SETTINGS: {
             // Process steer settings packet
-            if (len >= sizeof(SteerSettings)) {
-                const SteerSettings *settings = reinterpret_cast<const SteerSettings *>(data);
-                debugf("Received steer settings packet (not implemented yet)");
-                // Handle settings here - just a stub for now
-                // Example: Set PID values, PWM settings, etc.
-                // For future implementation
+            if (len >= sizeof(SteerSettingsPacket)) {
+                const SteerSettingsPacket *settings = reinterpret_cast<const SteerSettingsPacket *>(data);
+                settings::updateSettings(settings->settings);
             } else {
-                debugf("SteerSettings packet too small: %d < %d bytes", len, sizeof(SteerSettings));
+                debugf("SteerSettings packet too small: %d < %d bytes", len, sizeof(SteerSettingsPacket));
             }
             break;
         }
@@ -265,10 +263,7 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             // Process steer config packet
             if (len >= sizeof(SteerConfigPacket)) {
                 const SteerConfigPacket *config = reinterpret_cast<const SteerConfigPacket *>(data);
-                debugf("Received steer config packet (not implemented yet)");
-                // Handle configuration here - just a stub for now
-                // Example: Set device modes, steer switch types, etc.
-                // For future implementation
+                settings::updateConfig(config->config);
             } else {
                 debugf("SteerConfig packet too small: %d < %d bytes", len, sizeof(SteerConfigPacket));
             }

@@ -46,4 +46,8 @@ void stopMotor() {
         hw_interface.stop();
     }
 }
+
+DriverType getDriverType() {
+    return Set.driverType;
+}
 }

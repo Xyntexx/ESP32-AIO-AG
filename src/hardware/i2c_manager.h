@@ -3,8 +3,6 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include "../config/defines.h"
-#include "../settings/settings.h"
 
 //create I2C lock
 #define I2C_MUTEX_LOCK() (xSemaphoreTake(i2cMutex, portMAX_DELAY) != pdTRUE)

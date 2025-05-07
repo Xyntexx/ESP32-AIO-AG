@@ -18,15 +18,7 @@ void setup() {
   LOGSerial.println("/////  ESP32-AIO-AG  /////");
   LOGSerial.println("//////////////////////////");
 
-  restoreSettings();
-  debug("Settings loaded");
 
-  // Initialize I2C manager before using any I2C devices
-  if (!initI2CManager()) {
-    error("Failed to initialize I2C manager, some components may not work correctly");
-  } else {
-    debug("I2C manager initialized");
-  }
 
   initializeEthernet();
   debug("Ethernet initialized");

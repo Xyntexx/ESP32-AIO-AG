@@ -1,7 +1,6 @@
 #ifndef STEERING_CONTROL_H
 #define STEERING_CONTROL_H
 
-#include "../settings/settings.h"
 namespace autosteer {
 void handler();
 
