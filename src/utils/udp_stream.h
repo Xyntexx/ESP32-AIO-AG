@@ -4,13 +4,17 @@
 #include <AsyncUDP.h>
 #include <Stream.h>
 
+#include "w6100/esp32_sc_w6100.h"
+
 class UDPStream : public Stream {
 private:
     AsyncUDP udp;
     IPAddress broadcastAddress;
     uint16_t port;
     bool initialized;
-    String buffer;  // Buffer to collect bytes for complete lines
+    static const size_t bufferSize = 1024; // Size of the buffer for UDP messages
+    uint8_t buffer[bufferSize];  // Buffer to collect bytes for complete lines
+    size_t bufferIndex = 0;
 
 public:
     UDPStream(IPAddress broadcastAddr = IPAddress(255, 255, 255, 255), uint16_t port = 7777)
@@ -30,21 +34,22 @@ public:
     int peek() override { return -1; }      // UDP doesn't support reading in this context
     void flush() override { 
         // Send any buffered data
-        if (initialized && buffer.length() > 0) {
-            udp.broadcastTo((uint8_t*)buffer.c_str(), buffer.length(), port);
-            buffer = "";
+        if (initialized && bufferIndex) {
+            udp.broadcastTo((uint8_t*)buffer, bufferIndex, port);
+            bufferIndex = 0; // Reset buffer index after sending
         }
     }
 
     // Print interface implementation
     size_t write(uint8_t c) override {
         if (initialized) {
-            buffer += (char)c;
+            buffer[bufferIndex++] = c; // Add byte to buffer
+
             
             // If we get a newline, send the buffer
-            if (c == '\n') {
-                udp.broadcastTo((uint8_t*)buffer.c_str(), buffer.length(), port);
-                buffer = "";
+            if (c == '\n' || bufferIndex >= bufferSize) {
+                udp.writeTo(buffer, bufferIndex,ETH.broadcastIP(), port);
+                bufferIndex = 0; // Reset buffer index after sending
             }
             return 1;
         }

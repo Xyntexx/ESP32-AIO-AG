@@ -51,8 +51,8 @@ AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float
     packet.reserved2        = 0;
 
     // Calculate CRC
-    uint8_t *crc_start_byte = reinterpret_cast<uint8_t *>(&packet) + 2; // Skip header, pgn, length
-    int crc_length = sizeof(packet) - OUTGOING_CRC_START_BYTE - 2; // Exclude header and PGN
+    uint8_t *crc_start_byte = reinterpret_cast<uint8_t *>(&packet) + OUTGOING_CRC_START_BYTE; // Skip header, pgn, length
+    int crc_length = sizeof(packet) - OUTGOING_CRC_START_BYTE - 1; // Exclude header and PGN
     packet.crc       = calculateCRC(crc_start_byte, crc_length);
 
     return packet;
@@ -162,13 +162,26 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
         }
     }
 
-    const ScanRequestPacket packet;
     // check if message matches scan request message
-    if (len == ScanRequestPacket_len && memcmp(data, &packet, len) == 0) {
+    if (len == ScanRequestPacket_len && memcmp(data, &scanRequestPacket, len) == 0) {
         debugf("Received scan request");
         // Send subnet reply
-        SubnetReplyPacket subnetReply = createSubnetReplyPacket(our_ip, sourceIP);
-        send_func(reinterpret_cast<const uint8_t *>(&subnetReply), sizeof(subnetReply));
+        sendSubnetReply(our_ip, sourceIP);
+        return;
+    }if (len == HelloModulePacket_len && memcmp(data, &helloModulePacket, len) == 0) {
+        debugf("Received hello module packet");
+        // Send subnet reply
+
+        // Get current sensor values
+        float actualSteerAngle = was::get_steering_angle();
+        uint16_t sensorCounts  = was::get_wheel_angle_sensor_counts();
+        bool switchStatus      = buttons::steerBntEnabled();
+
+        debugf("Sending HelloReply: angle=%.2f, counts=%d, switch=%d",
+               actualSteerAngle, sensorCounts, switchStatus);
+
+        // Send hello reply
+        bool sent = sendHelloReply(actualSteerAngle, sensorCounts, switchStatus);
         return;
     }
 
@@ -264,35 +277,8 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             }
             break;
         }
-
-        case PGN_HELLO_MODULE: {
-            // Process hello packet from AgIO
-            if (len >= sizeof(HelloModulePacket)) {
-                const HelloModulePacket *helloPacket = reinterpret_cast<const HelloModulePacket *>(data);
-
-                // Check if the hello is for this module (module ID 126 = steer module)
-                if (helloPacket->moduleId == 126) {
-                    debugf("Received Hello packet for steer module (ID=126)");
-                    
-                    // Get current sensor values
-                    float actualSteerAngle = was::get_steering_angle();
-                    uint16_t sensorCounts  = was::get_wheel_angle_sensor_counts();
-                    bool switchStatus      = buttons::steerBntEnabled();
-
-                    debugf("Sending HelloReply: angle=%.2f, counts=%d, switch=%d", 
-                           actualSteerAngle, sensorCounts, switchStatus);
-
-                    // Send hello reply
-                    bool sent = sendHelloReply(actualSteerAngle, sensorCounts, switchStatus);
-                    debugf("HelloReply sent: %s", sent ? "OK" : "FAILED");
-                } else {
-                    debugf("Ignored Hello packet for module ID %d (not for us)", helloPacket->moduleId);
-                }
-            } else {
-                debugf("HelloModule packet too small: %d < %d bytes", len, sizeof(HelloModulePacket));
-            }
-            break;
-        }
+        case PGN_CORRECTED_POSITION:
+            return;
 
         default:
             // Unknown packet type - ignore

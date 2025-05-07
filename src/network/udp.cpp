@@ -32,7 +32,7 @@ ip_address ipAddressToIpAddress(const IPAddress& addr) {
 }
 
 // Send UDP packet to a broadcast address
-bool broadcastUDPPacket(AsyncUDP udp, uint16_t remotePort, const uint8_t* data, size_t len) {
+bool broadcastUDPPacket(AsyncUDP& udp, uint16_t remotePort, const uint8_t* data, size_t len) {
     if (!udp.connected()) {
         return false;
     }

@@ -14,7 +14,7 @@ struct ip_address {
 #define HEADER_LENGTH 3 // includes length byte
 #define PAYLOAD_LENGTH 8
 #define INCOMING_CRC_START_BYTE 2
-#define OUTGOING_CRC_START_BYTE 1
+#define OUTGOING_CRC_START_BYTE 2
 
 
 // Packet header bytes
@@ -31,6 +31,7 @@ const uint8_t PGN_HELLO_MODULE = 0xC8;   // 200 - Hello from AgIO to Module
 const uint8_t PGN_HELLO_REPLY = 0x7E;    // 126 - Hello Reply from Steer Module to AgIO
 const uint8_t PGN_SCAN_REQUEST = 0xCA;   // 202 - Scan request from AgIO
 const uint8_t PGN_SUBNET_REPLY = 0xCB;   // 203 - Subnet reply to AgIO
+const uint8_t PGN_CORRECTED_POSITION = 0x64; // 100 - Corrected position from AOG
 
 // Packets received from AOG (AgOpenGPS)
 #pragma pack(1)
@@ -78,18 +79,15 @@ struct SteerConfigPacket {
 
 struct HelloModulePacket {
     const uint8_t header[3] = {0x80, 0x81, 0x7F};
-    uint8_t pgn = PGN_HELLO_MODULE;
-    uint8_t length = 3;
-    uint8_t moduleId;       // Byte 5: Module ID
-    uint8_t reserved1;      // Byte 6: Reserved
-    uint8_t reserved2;      // Byte 7: Reserved
-    uint8_t crc;            // Byte 8: CRC
+    uint8_t data[6] = {200, 3, 56, 0, 0, 0x47};
 };
 
 struct ScanRequestPacket {
     const uint8_t header[3] = {0x80, 0x81, 0x7F};
     uint8_t data[6] = {202, 3, 202, 202, 5, 0x47};
 };
+const HelloModulePacket helloModulePacket;
+const ScanRequestPacket scanRequestPacket;
 
 // Packets sent to AOG (AgOpenGPS)
 struct AutoSteerData {
@@ -148,6 +146,30 @@ struct SubnetReplyPacket {
     uint8_t srcThree;       // Byte 9: Source Address third octet
     uint8_t crc;            // Byte 10: CRC
 };
+
+
+// data from AOG
+// corrected position
+// 0        header Hi       128 0x80
+// 1        header Lo       129 0x81
+// 2        source          127 0x7F
+// 3        AGIO PGN        100 0x64
+// 4        length          16
+// 5-12     longitude       double
+// 13-20    latitude        double
+// 21       CRC
+
+// corrected position alternate
+// 0        header Hi       128 0x80
+// 1        header Lo       129 0x81
+// 2        source          127 0x7F
+// 3        AGIO PGN        100 0x64
+// 4        length          24
+// 5-12     longitude       double
+// 13-20    latitude        double
+// 21-28    Fix2Fix         double
+// 29       CRC
+
 #pragma pack()
 
 const size_t AutoSteerData_len = 14;
