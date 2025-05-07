@@ -5,27 +5,48 @@
 
 #include "buttons.h"
 #include "motor.h"
-#include "networking.h"
 #include "was.h"
+
+#pragma pack(1)
+struct SteerSettings {
+    uint8_t gainP = 50;           // Byte 5: P gain
+    uint8_t highPWM = 180;         // Byte 6: High PWM
+    uint8_t lowPWM = 30;          // Byte 7: Low PWM
+    uint8_t minPWM = 25;          // Byte 8: Min PWM
+    uint8_t steerSensorCounts = 110;    // Byte 9: Counts per degree
+    uint16_t wasOffset = 0;    // Bytes 10-11: Steering offset (little-endian)
+    uint8_t ackermanFix = 100;     // Byte 12: Ackerman fix
+};
+struct SteerConfig {
+    uint8_t setting0 = 0b00111000;  // Byte 5: Settings byte 0
+    uint8_t pulseCountMax = 3;      // Byte 6: Pulse count
+    uint8_t was_speed = 0;          // Byte 7: Min speed
+    uint8_t setting1 =  0b00000000; // Byte 8: Settings byte 1
+    uint8_t reserved1;              // Byte 9: Reserved
+    uint8_t reserved2;              // Byte 10: Reserved
+    uint8_t reserved3;              // Byte 11: Reserved
+    uint8_t reserved4;              // Byte 12: Reserved
+};
+#pragma pack()
 
 // Storage struct for all settings
 struct Storage {
     // Steer settings
-    uint8_t gainP = 20;
-    uint8_t minPWM = 10;
-    uint8_t lowPWM = 10;
-    uint8_t maxPWM = 255;
-    int16_t steerSensorCounts = 1024;
-    int16_t steerAngleOffset = 0.0;
-    uint8_t ackermanFix = 100;
+    uint8_t gainP;
+    uint8_t minPWM;
+    uint8_t lowPWM;
+    uint8_t maxPWM;
+    int16_t steerSensorCounts;
+    int16_t steerAngleOffset;
+    uint8_t ackermanFix;
 
     // Steer Configuration
-    bool invertWAS                            = false;
-    bool isRelayActiveHigh                    = false;
-    bool invertSteer                          = false;
-    WASType wasType                           = WASType::single;
-    DriverType driverType                     = DriverType::cytron;
-    steer_switch_type_types steer_switch_type = steer_switch_type_types::SWITCH;
+    bool invertWAS;
+    bool isRelayActiveHigh;
+    bool invertSteer;
+    WASType wasType;
+    DriverType driverType;
+    steer_switch_type_types steer_switch_type;
 };
 
 // Global settings instance

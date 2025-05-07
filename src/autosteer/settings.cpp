@@ -45,6 +45,7 @@ void parse() {
 }
 
 void printSettings() {
+    debug("############# Settings #############");
     debugf("Gain: %d", Set.gainP);
     debugf("Max PWM: %d", Set.maxPWM);
     debugf("Low PWM: %d", Set.lowPWM);
@@ -61,6 +62,7 @@ void printSettings() {
     debugf("Steer Switch: %d", Set.steer_switch_type == steer_switch_type_types::SWITCH);
     debugf("Steer Button: %d", Set.steer_switch_type == steer_switch_type_types::BUTTON);
     debugf("Shaft Encoder: %d", Set.wasType == WASType::single);
+    debug("################################");
 }
 
 bool init(const SettingsInterface hw) {
@@ -77,6 +79,7 @@ bool updateSettings(const SteerSettings &settings_) {
     settings = settings_;
     hw_interface.write_settings(settings_);
     parse();
+    printSettings();
     return true;
 }
 
@@ -85,6 +88,7 @@ bool updateConfig(const SteerConfig &config_) {
     config = config_;
     hw_interface.write_config(config);
     parse();
+    printSettings();
     return true;
 }
 }

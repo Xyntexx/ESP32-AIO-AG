@@ -12,20 +12,14 @@
 namespace hw{
 
 bool init(){
-
-    // Initialize I2C manager before using any I2C devices
-    if (!initI2CManager()) {
-        error("Failed to initialize I2C manager, some components may not work correctly");
-    } else {
-        debug("I2C manager initialized");
-    }
-
+    initI2CManager();
     Settings::init();
     Buttons::init();
     BNO08XIMU::init(); // Init BNO first since they use the same i2c.
     ADS1115WAS::init();
     PWMMotor::init();
     gps::init();
+    debug("Hardware initialization done!");
     return true;
 }
 

@@ -170,16 +170,10 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
         sendSubnetReply(our_ip, sourceIP);
         return;
     }if (len == HelloModulePacket_len && memcmp(data, &helloModulePacket, len) == 0) {
-        debugf("Received hello module packet");
-        // Send subnet reply
-
         // Get current sensor values
         float actualSteerAngle = was::get_steering_angle();
         uint16_t sensorCounts  = was::get_wheel_angle_sensor_counts();
         bool switchStatus      = buttons::steerBntEnabled();
-
-        debugf("Sending HelloReply: angle=%.2f, counts=%d, switch=%d",
-               actualSteerAngle, sensorCounts, switchStatus);
 
         // Send hello reply
         bool sent = sendHelloReply(actualSteerAngle, sensorCounts, switchStatus);

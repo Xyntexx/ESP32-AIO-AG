@@ -5,6 +5,7 @@
 #ifndef NETWORKING_H
 #define NETWORKING_H
 #include <cstddef>
+#include "settings.h"
 
 // Define ip_address struct
 struct ip_address {
@@ -55,33 +56,12 @@ struct SteerData {
     uint8_t crc;           // Byte 13: CRC
 };
 
-struct SteerSettings {
-    uint8_t gainP;           // Byte 5: P gain
-    uint8_t highPWM;         // Byte 6: High PWM
-    uint8_t lowPWM;          // Byte 7: Low PWM
-    uint8_t minPWM;          // Byte 8: Min PWM
-    uint8_t steerSensorCounts;    // Byte 9: Counts per degree
-    uint16_t wasOffset;    // Bytes 10-11: Steering offset (little-endian)
-    uint8_t ackermanFix;     // Byte 12: Ackerman fix
-};
-
 struct SteerSettingsPacket {
     const uint8_t header[3] = AOG_HEADER_BYTES;
     uint8_t pgn = PGN_STEER_SETTINGS;
     uint8_t length = PAYLOAD_LENGTH;
     SteerSettings settings; // Bytes 5-12: Steer settings
     uint8_t crc;             // Byte 13: CRC
-};
-
-struct SteerConfig {
-    uint8_t setting0;           // Byte 5: Settings byte 0
-    uint8_t pulseCountMax;     // Byte 6: Pulse count
-    uint8_t was_speed;       // Byte 7: Min speed
-    uint8_t setting1;           // Byte 8: Settings byte 1
-    uint8_t reserved1;      // Byte 9: Reserved
-    uint8_t reserved2;      // Byte 10: Reserved
-    uint8_t reserved3;      // Byte 11: Reserved
-    uint8_t reserved4;      // Byte 12: Reserved
 };
 
 struct SteerConfigPacket {
