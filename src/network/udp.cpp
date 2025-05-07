@@ -7,6 +7,7 @@
 
 #include "config/defines.h"
 #include "utils/log.h"
+#include "w6100/esp32_sc_w6100.h"
 
 AsyncUDP autosteer_udp;
 AsyncUDP gps_udp;
@@ -39,9 +40,9 @@ bool broadcastUDPPacket(AsyncUDP udp, uint16_t remotePort, const uint8_t* data, 
     // Create an AsyncUDPMessage and copy the data into it
     AsyncUDPMessage message;
     message.write(data, len);
-    
+
     // Send the message to the broadcast address
-    return udp.broadcastTo(message, remotePort) > 0;
+    return udp.writeTo(data, len, ETH.broadcastIP(), remotePort) > 0;
 }
 
 // UDP packet sending function for autosteer

@@ -35,7 +35,7 @@ const uint8_t PGN_SUBNET_REPLY = 0xCB;   // 203 - Subnet reply to AgIO
 // Packets received from AOG (AgOpenGPS)
 #pragma pack(1)
 struct SteerData {
-    uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = {0x80, 0x81, 0x7F};
     uint8_t pgn = PGN_STEER_DATA;
     uint8_t length = PAYLOAD_LENGTH;
     uint16_t speed;        // Bytes 5-6: Speed (little-endian)
@@ -48,7 +48,7 @@ struct SteerData {
 };
 
 struct SteerSettings {
-    uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = {0x80, 0x81, 0x7F};
     uint8_t pgn = PGN_STEER_SETTINGS;
     uint8_t length = PAYLOAD_LENGTH;
     uint8_t gainP;           // Byte 5: P gain
@@ -62,7 +62,7 @@ struct SteerSettings {
 };
 
 struct SteerConfigPacket {
-    uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = {0x80, 0x81, 0x7F};
     uint8_t pgn = PGN_STEER_CONFIG;
     uint8_t length = PAYLOAD_LENGTH;
     uint8_t set0;           // Byte 5: Settings byte 0
@@ -77,7 +77,7 @@ struct SteerConfigPacket {
 };
 
 struct HelloModulePacket {
-    uint8_t header[3] = {0x80, 0x81, 0x7F};
+    const uint8_t header[3] = {0x80, 0x81, 0x7F};
     uint8_t pgn = PGN_HELLO_MODULE;
     uint8_t length = 3;
     uint8_t moduleId;       // Byte 5: Module ID
@@ -87,13 +87,8 @@ struct HelloModulePacket {
 };
 
 struct ScanRequestPacket {
-    uint8_t header[3] = {0x80, 0x81, 0x7F};
-    uint8_t pgn = PGN_SCAN_REQUEST;
-    uint8_t length = 3;
-    uint8_t scanValue1 = 202;     // Byte 5: Always 202
-    uint8_t scanValue2 = 202;     // Byte 6: Always 202
-    uint8_t scanValue3 = 5;       // Byte 7: Always 5
-    uint8_t crc;                  // Byte 8: CRC
+    const uint8_t header[3] = {0x80, 0x81, 0x7F};
+    uint8_t data[6] = {202, 3, 202, 202, 5, 0x47};
 };
 
 // Packets sent to AOG (AgOpenGPS)
@@ -155,14 +150,24 @@ struct SubnetReplyPacket {
 };
 #pragma pack()
 
-static_assert(sizeof(AutoSteerData) == 14, "AutoSteerData size mismatch");
-static_assert(sizeof(AutoSteerData2) == 14, "AutoSteerData2 size mismatch");
-static_assert(sizeof(SteerData) == 14, "SteerData size mismatch");
-static_assert(sizeof(SteerSettings) == 14, "SteerSettings size mismatch");
-static_assert(sizeof(SteerConfigPacket) == 14, "SteerConfigPacket size mismatch");
-static_assert(sizeof(HelloModulePacket) == 9, "HelloModulePacket size mismatch");
-static_assert(sizeof(ScanRequestPacket) == 9, "ScanRequestPacket size mismatch");
-static_assert(sizeof(HelloReplyPacket) == 9, "HelloReplyPacket size mismatch");
-static_assert(sizeof(SubnetReplyPacket) == 11, "SubnetReplyPacket size mismatch");
+const size_t AutoSteerData_len = 14;
+const size_t AutoSteerData2_len = 14;
+const size_t SteerData_len = 14;
+const size_t SteerSettings_len = 14;
+const size_t SteerConfigPacket_len = 14;
+const size_t HelloModulePacket_len = 9;
+const size_t ScanRequestPacket_len = 9;
+const size_t HelloReplyPacket_len = 9;
+const size_t SubnetReplyPacket_len = 11;
+
+static_assert(sizeof(AutoSteerData) == AutoSteerData_len, "AutoSteerData size mismatch");
+static_assert(sizeof(AutoSteerData2) == AutoSteerData2_len, "AutoSteerData2 size mismatch");
+static_assert(sizeof(SteerData) == SteerData_len, "SteerData size mismatch");
+static_assert(sizeof(SteerSettings) == SteerSettings_len, "SteerSettings size mismatch");
+static_assert(sizeof(SteerConfigPacket) == SteerConfigPacket_len, "SteerConfigPacket size mismatch");
+static_assert(sizeof(HelloModulePacket) == HelloModulePacket_len, "HelloModulePacket size mismatch");
+static_assert(sizeof(ScanRequestPacket) == ScanRequestPacket_len, "ScanRequestPacket size mismatch");
+static_assert(sizeof(HelloReplyPacket) == HelloReplyPacket_len, "HelloReplyPacket size mismatch");
+static_assert(sizeof(SubnetReplyPacket) == SubnetReplyPacket_len, "SubnetReplyPacket size mismatch");
 
 #endif //NETWORKING_H

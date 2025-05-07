@@ -115,9 +115,9 @@ SubnetReplyPacket createSubnetReplyPacket(const ip_address deviceIP, const ip_ad
     packet.ipThree = deviceIP.ip[2];
 
     // Set source IP (only first 3 octets used in protocol)
-    packet.srcOne   = deviceIP.ip[0];
-    packet.srcTwo   = deviceIP.ip[1];
-    packet.srcThree = deviceIP.ip[2];
+    packet.srcOne   = sourceIP.ip[0];
+    packet.srcTwo   = sourceIP.ip[1];
+    packet.srcThree = sourceIP.ip[2];
 
     // Calculate CRC (skipping header, pgn, and length)
     uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + OUTGOING_CRC_START_BYTE; // Skip header, pgn, length
@@ -160,6 +160,16 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             debugf("Invalid header byte %d: 0x%02X (expected 0x%02X)", i, data[i], AOG_HEADER[i]);
             return; // Invalid header
         }
+    }
+
+    const ScanRequestPacket packet;
+    // check if message matches scan request message
+    if (len == ScanRequestPacket_len && memcmp(data, &packet, len) == 0) {
+        debugf("Received scan request");
+        // Send subnet reply
+        SubnetReplyPacket subnetReply = createSubnetReplyPacket(our_ip, sourceIP);
+        send_func(reinterpret_cast<const uint8_t *>(&subnetReply), sizeof(subnetReply));
+        return;
     }
 
     // Get packet type (PGN) and verify packet format
@@ -280,30 +290,6 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 }
             } else {
                 debugf("HelloModule packet too small: %d < %d bytes", len, sizeof(HelloModulePacket));
-            }
-            break;
-        }
-
-        case PGN_SCAN_REQUEST: {
-            // Process scan request from AgIO
-            if (len >= sizeof(ScanRequestPacket)) {
-                const ScanRequestPacket *scanPacket = reinterpret_cast<const ScanRequestPacket *>(data);
-
-                debugf("Received scan request: values=%d,%d,%d", 
-                       scanPacket->scanValue1, scanPacket->scanValue2, scanPacket->scanValue3);
-
-                // Verify the scan request values (202, 202, 5)
-                if (scanPacket->scanValue1 == 202 && scanPacket->scanValue2 == 202 && scanPacket->scanValue3 == 5) {
-                    debugf("Valid scan request detected, sending subnet reply");
-                    
-                    // Send subnet reply
-                    bool sent = sendSubnetReply(our_ip, sourceIP);
-                    debugf("SubnetReply sent: %s", sent ? "OK" : "FAILED");
-                } else {
-                    debugf("Invalid scan request values");
-                }
-            } else {
-                debugf("ScanRequest packet too small: %d < %d bytes", len, sizeof(ScanRequestPacket));
             }
             break;
         }
