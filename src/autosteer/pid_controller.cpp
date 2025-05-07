@@ -22,8 +22,8 @@ int calcSteeringPID(float steerAngleError) {
   else newMax = Set.maxPWM;
 
   //add min throttle factor so no delay from motor resistance.
-  if (pwmDrive < 0) pwmDrive -= Set.lowPWM;
-  else if (pwmDrive > 0) pwmDrive += Set.lowPWM;
+  if (pwmDrive < 0) pwmDrive -= Set.minPWM;
+  else if (pwmDrive > 0) pwmDrive += Set.minPWM;
 
   //limit the pwm drive
   if (pwmDrive > newMax) pwmDrive = newMax;
