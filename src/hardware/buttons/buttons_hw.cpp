@@ -16,6 +16,7 @@ bool Buttons::init() {
     // Initialize the buttons interface
     buttons::ButtonsInterface interface;
     interface.steerPinState = steerPinState;
+    interface.workPinState  = workPinState;
     buttons::init(interface);
 
     initialized_ = true;
@@ -31,4 +32,7 @@ bool Buttons::steerPinState() {
     return digitalRead(STEER_BTN_PIN) == STEER_BTN_ACTIVE_STATE;
 }
 
+bool Buttons::workPinState() {
+    return digitalRead(WORK_BTN_PIN) == WORK_BTN_ACTIVE_STATE;
+}
 } // namespace hw 

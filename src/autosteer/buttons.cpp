@@ -10,6 +10,7 @@ static ButtonsInterface hw_interface;
 bool inited = false;
 bool prev_momentary_state = false;
 bool steer_enable         = false;
+bool work_enable          = false;
 bool sw_switch_valid      = false;
 
 bool init(const ButtonsInterface hw) {
@@ -29,25 +30,37 @@ bool steerBntEnabled() {
     return false;
 }
 
-void handler() {
-    bool btn_state;
-    if (!inited) {
-        btn_state = false;
-    }else {
-        btn_state = hw_interface.steerPinState();
+bool workBntEnabled() {
+    if (inited) {
+        return work_enable;
     }
-    auto type      = getButtonType();
+    return false;
+}
 
-    switch (type) {
+
+void handler() {
+    if (!inited || !hw_interface.steerPinState || !hw_interface.workPinState) {
+        steer_enable = false;
+        work_enable  = false;
+        return;
+    }
+
+    bool steer_btn_state = hw_interface.steerPinState();
+    bool work_btn_state  = hw_interface.workPinState();
+
+    work_enable = work_btn_state; // No settings for work button - always use as a simple switch
+
+    auto steer_btn_type      = getButtonType();
+    switch (steer_btn_type) {
         case steer_switch_type_types::SWITCH: // Simple switch state follows the button directly
-            steer_enable = btn_state;
+            steer_enable = steer_btn_state;
             break;
 
         case steer_switch_type_types::BUTTON: // Toggle on button release (when it was previously pressed)
-            if (!btn_state && prev_momentary_state) {
+            if (!steer_btn_state && prev_momentary_state) {
                 steer_enable = !steer_enable;
             }
-            prev_momentary_state = btn_state;
+            prev_momentary_state = steer_btn_state;
             break;
 
         case steer_switch_type_types::NONE:

@@ -39,17 +39,15 @@ uint8_t calculateCRC(const uint8_t *data, size_t length) {
 }
 
 // Create an AutoSteer data packet
-AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float roll, bool switchStatus, uint8_t pwmDisplay) {
+AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float roll, bool work_switch, bool steer_switch, uint8_t pwmDisplay) {
     AutoSteerData packet;
 
     // Fill in the data
-    packet.actualSteerAngle = static_cast<uint16_t>(actualSteerAngle * 100.0f);
+    packet.actualSteerAngle = actualSteerAngle * 100.0f;
     packet.imuHeading       = static_cast<uint16_t>(heading * 10.0f);
     packet.imuRoll          = static_cast<uint16_t>(roll * 10.0f);
-    packet.switchByte       = switchStatus ? 1 : 0;
+    packet.switchByte       = (work_switch ? 1 : 0) | ((steer_switch ? 1 : 0) << 1);
     packet.pwmDisplay       = pwmDisplay;
-    packet.reserved1        = 0;
-    packet.reserved2        = 0;
 
     // Calculate CRC
     uint8_t *crc_start_byte = reinterpret_cast<uint8_t *>(&packet) + OUTGOING_CRC_START_BYTE; // Skip header, pgn, length
@@ -74,8 +72,6 @@ AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue) {
     packet.reserved5 = 0;
     packet.reserved6 = 0;
     packet.reserved7 = 0;
-    packet.reserved8 = 0;
-    packet.reserved9 = 0;
 
     // Calculate CRC
     uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + OUTGOING_CRC_START_BYTE;
@@ -225,15 +221,16 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 float actualSteerAngle = was::get_steering_angle();
                 float heading = imu::get_heading();
                 float roll = imu::get_roll();
-                bool switchStatus = buttons::steerBntEnabled();
+                bool steer_switch = buttons::steerBntEnabled();
+                bool work_switch = buttons::workBntEnabled();
                 uint8_t pwmDisplay = motor::getCurrentPWM();
                 uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
 
                 debugf("Sending response: angle=%.2f, heading=%.1f, roll=%.1f, switch=%d, pwm=%d", 
-                       actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
+                       actualSteerAngle, heading, roll, steer_switch, pwmDisplay);
 
                 // Send response packets
-                bool sent1 = sendAutoSteerData(actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
+                bool sent1 = sendAutoSteerData(actualSteerAngle, heading, roll, work_switch, steer_switch, pwmDisplay);
                 bool sent2 = sendAutoSteer2Data(sensorValue);
 
             } else {
@@ -277,9 +274,9 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 }
 
 // Send AutoSteer data to AOG
-bool sendAutoSteerData(float actualSteerAngle, float heading, float roll, bool switchStatus, uint8_t pwmDisplay) {
+bool sendAutoSteerData(float actualSteerAngle, float heading, float roll, bool work_switch, bool steer_switch, uint8_t pwmDisplay) {
     // Create the packet
-    AutoSteerData packet = createAutoSteerPacket(actualSteerAngle, heading, roll, switchStatus, pwmDisplay);
+    AutoSteerData packet = createAutoSteerPacket(actualSteerAngle, heading, roll, false ,steer_switch , pwmDisplay);
 
     // Send via UDP
     return send_func(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));

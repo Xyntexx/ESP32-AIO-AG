@@ -16,6 +16,7 @@ using ReadFunc = bool (*)();
 // Interface structure for hardware implementation
 struct ButtonsInterface {
     ReadFunc steerPinState = nullptr;
+    ReadFunc workPinState = nullptr;
 };
 
 // Function declarations
@@ -25,6 +26,7 @@ void handler();
 
 // Global functions used by autosteer
 bool steerBntEnabled();
+bool workBntEnabled();
 
 steer_switch_type_types getButtonType();
 }
