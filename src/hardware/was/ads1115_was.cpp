@@ -55,7 +55,7 @@ void ADS1115WAS::handler() {
         case WASType::single: // ADS 1115 single
             I2C_MUTEX_LOCK();
             // First read the result of the previous conversion
-            actual_steer_pos_raw = ads1115.readConversion() >> 1; //divide by 2
+            actual_steer_pos_raw = ads1115.readConversion();
 
             // Then start the next conversion
             ads1115.setMux(ADS1115_MUX_SINGLE_0);
@@ -66,7 +66,7 @@ void ADS1115WAS::handler() {
         case WASType::diff: // ADS 1115 differential
             I2C_MUTEX_LOCK();
             // First read the result of the previous conversion
-            actual_steer_pos_raw = ads1115.readConversion() >> 1; //divide by 2
+            actual_steer_pos_raw = ads1115.readConversion();
 
             // Then start the next conversion
             ads1115.setMux(ADS1115_MUX_DIFF_0_1);
