@@ -94,8 +94,6 @@ struct AutoSteerData {
     uint16_t imuRoll;          // Bytes 7-8: IMU roll HI/LO (little-endian)
     uint8_t switchByte;        // Byte 9: Switch status
     uint8_t pwmDisplay;        // Byte 10: PWM display
-    uint8_t reserved1;         // Byte 11: Reserved
-    uint8_t reserved2;         // Byte 12: Reserved
     uint8_t crc;               // Byte 13: CRC
 };
 
@@ -111,8 +109,6 @@ struct AutoSteerData2 {
     uint8_t reserved5;       // Byte 8: Reserved
     uint8_t reserved6;       // Byte 9: Reserved
     uint8_t reserved7;       // Byte 10: Reserved
-    uint8_t reserved8;       // Byte 11: Reserved
-    uint8_t reserved9;       // Byte 12: Reserved
     uint8_t crc;             // Byte 13: CRC
 };
 
@@ -167,8 +163,8 @@ struct SubnetReplyPacket {
 
 #pragma pack()
 
-const size_t AutoSteerData_len = 16;
-const size_t AutoSteerData2_len = 16;
+const size_t AutoSteerData_len = 14;
+const size_t AutoSteerData2_len = 14;
 const size_t SteerData_len = 14;
 const size_t SteerSettings_len = 14;
 const size_t SteerConfigPacket_len = 14;
