@@ -8,8 +8,8 @@
 #define GPS_RX_PIN 1
 #define GPS_TX_PIN 2
 
-#define WORK_BTN_PIN 12
-#define STEER_BTN_PIN 13
+#define STEER_BTN_PIN 12
+#define WORK_BTN_PIN 13
 
 #define STEER_BTN_ACTIVE_STATE 1
 #define WORK_BTN_ACTIVE_STATE 1
