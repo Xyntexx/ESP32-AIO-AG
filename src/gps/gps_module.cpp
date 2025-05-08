@@ -130,9 +130,9 @@ void handler() {
         }
     }
 }
-} // namespace gps
 
 // Initialize GPS communication with UDP sending function and device IP
 void initGpsCommunication(bool (*send_func)(const uint8_t *, size_t), const ip_address &deviceIP) {
     gps::set_udp_sender(send_func);
 }
+} // namespace gps

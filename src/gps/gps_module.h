@@ -36,9 +36,9 @@ void process_udp_message(const uint8_t *data, size_t len, const ip_address &sour
 
 // Set the UDP sender function for GPS data
 void set_udp_sender(bool (*send_func)(const uint8_t *, size_t));
-}
 
 // Initialize GPS communication with UDP sending function and device IP
 void initGpsCommunication(bool (*send_func)(const uint8_t *, size_t), const ip_address &deviceIP);
+}
 
 #endif // GPS_MODULE_H

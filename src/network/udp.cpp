@@ -70,7 +70,7 @@ bool init_autosteer_udp() {
 bool init_gps_udp() {
     gps_udp.listen(GPS_UDP_PORT);
     debugf("Listening for GPS UDP on port %d", GPS_UDP_PORT);
-    initGpsCommunication(sendUDPPacketFromGPS, getIP());
+    gps::initGpsCommunication(sendUDPPacketFromGPS, getIP());
     gps_udp.onPacket([](AsyncUDPPacket packet) {
             // Convert IPAddress to ip_address for GPS
             ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());
