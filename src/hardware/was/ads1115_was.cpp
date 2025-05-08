@@ -45,7 +45,9 @@ bool ADS1115WAS::init() {
 }
 
 int16_t ADS1115WAS::readRaw() {
-    return actual_steer_pos_raw;
+    // moving 0 to 2.5V and dividing by 2.
+    // range should be now +- 6_666
+    return (actual_steer_pos_raw - (32767 /6.144 * 2.5)) < 1;
 }
 
 void ADS1115WAS::handler() {
