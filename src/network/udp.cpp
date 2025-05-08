@@ -6,6 +6,7 @@
 #include <WiFi.h>
 
 #include "config/defines.h"
+#include "dummy/dummygps.h"
 #include "utils/log.h"
 #include "w6100/esp32_sc_w6100.h"
 
@@ -70,11 +71,13 @@ bool init_autosteer_udp() {
 bool init_gps_udp() {
     gps_udp.listen(GPS_UDP_PORT);
     debugf("Listening for GPS UDP on port %d", GPS_UDP_PORT);
-    gps::initGpsCommunication(sendUDPPacketFromGPS, getIP());
+    //gps::initGpsCommunication(sendUDPPacketFromGPS, getIP());
+    dummy_gps::initGpsCommunication(sendUDPPacketFromGPS, getIP());
     gps_udp.onPacket([](AsyncUDPPacket packet) {
             // Convert IPAddress to ip_address for GPS
             ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());
-            gps::process_udp_message(packet.data(), packet.length(), sourceIP);
+            //gps::process_udp_message(packet.data(), packet.length(), sourceIP);
+            dummy_gps::process_udp_message(packet.data(), packet.length(), sourceIP);
         });
     return true;
 }

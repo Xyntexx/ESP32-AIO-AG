@@ -2,6 +2,7 @@
 
 #include "autosteer/autosteer.h"
 #include "autosteer/buttons.h"
+#include "dummy/dummygps.h"
 #include "gps/gps_module.h"
 #include "hardware/was/ads1115_was.h"
 #include "hardware/imu/bno08x_imu.h"
@@ -37,7 +38,8 @@
 
 [[noreturn]] void gpsTask(void *pv_parameters) {
     for (;;) {
-        gps::handler();
+        //gps::handler();
+        dummy_gps::handler();
         vTaskDelay(pdMS_TO_TICKS(1)); // 1kHz update rate
     }
 }
