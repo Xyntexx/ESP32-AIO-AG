@@ -1,2 +1,14 @@
 /.idea/
 /.pio/
+.vscode/
+build/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*~
+*.bak
+*.swp
+*.log
