@@ -20,7 +20,7 @@ namespace was {
 
     int16_t get_steering_position() {
         //center the steering position sensor
-        int16_t steering_position = get_raw_steering_position() - Set.steerAngleOffset;
+        int16_t steering_position = get_raw_steering_position() + Set.steerAngleOffset;
 
         //invert position, left must be minus
         if (Set.invertWAS == 1) steering_position *= -1;
