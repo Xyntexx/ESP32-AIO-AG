@@ -28,4 +28,7 @@ bool guidancePacketValid();
 bool getSwSwitchStatus();
 float getSteerSetPoint();
 
+uint32_t getLastSentInterval();
+void sendSteerData();
+
 #endif // UDP_IO_H
