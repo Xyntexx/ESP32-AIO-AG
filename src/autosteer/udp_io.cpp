@@ -259,6 +259,8 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
             }
             break;
         }
+        case PGN_FROM_AUTOSTEER:
+        case PGN_FROM_AUTOSTEER2:
         case PGN_CORRECTED_POSITION:
         case PGN_FROM_IMU:
         case PGN_FROM_MACHINE:
