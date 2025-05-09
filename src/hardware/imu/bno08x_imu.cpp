@@ -26,6 +26,7 @@ bool BNO08XIMU::init() {
         return false;
     }
     I2C_MUTEX_UNLOCK();
+    initialized = true;
 
     imu::IMUInterface interface;
     interface.heading = getHeading;

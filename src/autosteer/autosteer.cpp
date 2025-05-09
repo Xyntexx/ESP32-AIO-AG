@@ -43,6 +43,9 @@ void handler() {
         motor::stopMotor();
         pulseCount = 0; //Reset counters if Autosteer is offline
     }
+    if (getLastSentInterval() > 200) {
+        sendSteerData();
+    }
 }
 
 // Get the combined steer switch state (physical button and software switch) TODO: what is correct operation? include sw switch?

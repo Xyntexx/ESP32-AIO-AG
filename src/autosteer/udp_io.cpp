@@ -11,12 +11,14 @@
 
 // Global variables
 uint32_t lastDataReceived                  = 0;
+uint32_t lastSent                          = 0;
 float steerAngleSetPoint                   = 0.0f;
 uint8_t guidanceStatus                     = 0;
 float gpsSpeed                             = 0.0f;
 uint8_t sectionControlByte                 = 0;
 bool (*send_func)(const uint8_t *, size_t) = nullptr;
 ip_address our_ip                          = {0};
+bool initialized = false;
 
 // Initialize communication
 bool initAutosteerCommunication(bool (*send_func_)(const uint8_t *, size_t), ip_address our_ip_) {
@@ -26,6 +28,7 @@ bool initAutosteerCommunication(bool (*send_func_)(const uint8_t *, size_t), ip_
     lastDataReceived   = 0;
     steerAngleSetPoint = 0.0f;
     guidanceStatus     = 0;
+    initialized = true;
     return true;
 }
 
@@ -215,22 +218,7 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 
                 // Update timestamps and flags
                 lastDataReceived = millis();
-
-                // Get current sensor values from their respective modules
-                float actualSteerAngle = was::get_steering_angle();
-                float heading = imu::get_heading();
-                float roll = imu::get_roll();
-                bool steer_switch = buttons::steerBntEnabled();
-                bool work_switch = buttons::workBntEnabled();
-                uint8_t pwmDisplay = motor::getCurrentPWM();
-                uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
-
-                debugf("Sending response: A=%.2f, R=%d, H=%.1f, R=%.1f, S=%d, pwm=%d",
-                       actualSteerAngle, was::get_raw_steering_position(), heading, roll, steer_switch, pwmDisplay);
-
-                // Send response packets
-                sendAutoSteerData(actualSteerAngle, heading, roll, work_switch, steer_switch, pwmDisplay);
-                sendAutoSteer2Data(sensorValue);
+                sendSteerData();
 
             } else {
                 debugf("SteerData packet too small: %d < %d bytes", len, sizeof(SteerData));
@@ -323,4 +311,30 @@ bool getSwSwitchStatus() {
 // Get the steer angle setpoint (if guidance is valid)
 float getSteerSetPoint() {
     return guidancePacketValid() ? steerAngleSetPoint : 0.0f;
+}
+
+uint32_t getLastSentInterval() {
+    return  millis() - lastSent;
+}
+
+void sendSteerData() {
+    if (!initialized) {
+        return;
+    }
+    // Get current sensor values from their respective modules
+    float actualSteerAngle = was::get_steering_angle();
+    float heading = imu::get_heading();
+    float roll = imu::get_roll();
+    bool steer_switch = buttons::steerBntEnabled();
+    bool work_switch = buttons::workBntEnabled();
+    uint8_t pwmDisplay = motor::getCurrentPWM();
+    uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
+
+    debugf("Sending response: A=%.2f, R=%d, H=%.1f, R=%.1f, S=%d, pwm=%d",
+           actualSteerAngle, was::get_raw_steering_position(), heading, roll, steer_switch, pwmDisplay);
+
+    lastSent = millis();
+    // Send response packets
+    sendAutoSteerData(actualSteerAngle, heading, roll, work_switch, steer_switch, pwmDisplay);
+    sendAutoSteer2Data(sensorValue);
 }
