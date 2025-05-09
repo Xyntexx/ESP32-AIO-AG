@@ -44,8 +44,7 @@ public:
         if (initialized) {
             for (auto stream : streams) {
                 if (stream) {
-                    stream->print(message);
-                    stream->println();
+                    stream->println(message);
                     stream->flush();
                 }
             }

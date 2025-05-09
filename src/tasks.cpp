@@ -50,7 +50,7 @@ bool create_tasks() {
     BaseType_t taskCreated = xTaskCreate(
         was_task,
         "was_task", 
-        2048,
+        4096,
         nullptr, 
         WAS_TASK_PRIORITY, 
         &wasTaskHandle

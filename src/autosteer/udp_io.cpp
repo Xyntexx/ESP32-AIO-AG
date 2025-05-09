@@ -147,14 +147,12 @@ bool verifyPacketCRC(const uint8_t *data, size_t length) {
 void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP) {
     // Check if packet is long enough for header + PGN + length
     if (len < 5) {
-        debugf("Received packet too short (len=%d)", len);
         return;
     }
 
     // Check header (first 3 bytes)
     for (uint8_t i = 0; i < 3; i++) {
         if (data[i] != AOG_HEADER[i]) {
-            debugf("Invalid header byte %d: 0x%02X (expected 0x%02X)", i, data[i], AOG_HEADER[i]);
             return; // Invalid header
         }
     }
@@ -226,8 +224,8 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 uint8_t pwmDisplay = motor::getCurrentPWM();
                 uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
 
-                debugf("Sending response: angle=%.2f, heading=%.1f, roll=%.1f, switch=%d, pwm=%d", 
-                       actualSteerAngle, heading, roll, steer_switch, pwmDisplay);
+                debugf("Sending response: A=%.2f, R=%d, H=%.1f, R=%.1f, S=%d, pwm=%d",
+                       actualSteerAngle, was::get_raw_steering_position(), heading, roll, steer_switch, pwmDisplay);
 
                 // Send response packets
                 bool sent1 = sendAutoSteerData(actualSteerAngle, heading, roll, work_switch, steer_switch, pwmDisplay);

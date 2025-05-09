@@ -11,6 +11,7 @@ BNO085 BNO08XIMU::bno08x;
 float BNO08XIMU::heading = 0.0f;
 float BNO08XIMU::roll = 0.0f;
 float BNO08XIMU::pitch = 0.0f;
+bool initialized = false;
 
 bool BNO08XIMU::init() {
     debug("Initializing BNO08X IMU");
@@ -34,6 +35,9 @@ bool BNO08XIMU::init() {
 }
 
 void BNO08XIMU::handler(){
+    if (!initialized) {
+        return;
+    }
     I2C_MUTEX_LOCK();
     heading = bno08x.getHeading();
     roll = bno08x.getRoll();
@@ -43,11 +47,11 @@ void BNO08XIMU::handler(){
 }
 
 float BNO08XIMU::getHeading(){
-    return BNO08XIMU::heading;
+    return heading;
 }
 
 float BNO08XIMU::getRoll(){
-    return BNO08XIMU::roll;
+    return roll;
 }
 
 } // namespace hw
