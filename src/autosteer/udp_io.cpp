@@ -46,7 +46,7 @@ AutoSteerData createAutoSteerPacket(float actualSteerAngle, float heading, float
     packet.actualSteerAngle = actualSteerAngle * 100.0f;
     packet.imuHeading       = static_cast<uint16_t>(heading * 10.0f);
     packet.imuRoll          = static_cast<uint16_t>(roll * 10.0f);
-    packet.switchByte       = (work_switch ? 1 : 0) | ((steer_switch ? 1 : 0) << 1);
+    packet.switchByte       = (work_switch ? 0 : 1) | ((steer_switch ? 0 : 1) << 1);
     packet.pwmDisplay       = pwmDisplay;
 
     // Calculate CRC
@@ -82,7 +82,7 @@ AutoSteerData2 createAutoSteer2Packet(uint8_t sensorValue) {
 }
 
 // Create HelloReply packet
-HelloReplyPacket createHelloReplyPacket(float actualSteerAngle, uint16_t sensorCounts, bool switchStatus) {
+HelloReplyPacket createHelloReplyPacket(float actualSteerAngle, uint16_t sensorCounts, bool work_switch, bool steer_switch) {
     HelloReplyPacket packet;
 
     // Convert float angle to 16-bit integer (angle * 100)
@@ -93,7 +93,7 @@ HelloReplyPacket createHelloReplyPacket(float actualSteerAngle, uint16_t sensorC
     packet.angleHi    = (angle >> 8) & 0xFF; // High byte
     packet.countsLo   = sensorCounts & 0xFF; // Low byte
     packet.countsHi   = (sensorCounts >> 8) & 0xFF; // High byte
-    packet.switchByte = switchStatus ? 1 : 0;
+    packet.switchByte = steer_switch ? 1 : 0 | ((work_switch ? 1 : 0) << 1);
 
     // Calculate CRC (skipping header, pgn, and length)
     uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + 3; // Skip header, pgn, length
@@ -167,10 +167,11 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
         // Get current sensor values
         float actualSteerAngle = was::get_steering_angle();
         uint16_t sensorCounts  = was::get_wheel_angle_sensor_counts();
-        bool switchStatus      = buttons::steerBntEnabled();
+        bool steer_switch      = buttons::steerBntEnabled();
+        bool work_switch       = buttons::workBntEnabled();
 
         // Send hello reply
-        bool sent = sendHelloReply(actualSteerAngle, sensorCounts, switchStatus);
+        bool sent = sendHelloReply(actualSteerAngle, sensorCounts, work_switch, steer_switch);
         return;
     }
 
@@ -228,8 +229,8 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                        actualSteerAngle, was::get_raw_steering_position(), heading, roll, steer_switch, pwmDisplay);
 
                 // Send response packets
-                bool sent1 = sendAutoSteerData(actualSteerAngle, heading, roll, work_switch, steer_switch, pwmDisplay);
-                bool sent2 = sendAutoSteer2Data(sensorValue);
+                sendAutoSteerData(actualSteerAngle, heading, roll, work_switch, steer_switch, pwmDisplay);
+                sendAutoSteer2Data(sensorValue);
 
             } else {
                 debugf("SteerData packet too small: %d < %d bytes", len, sizeof(SteerData));
@@ -274,7 +275,7 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 // Send AutoSteer data to AOG
 bool sendAutoSteerData(float actualSteerAngle, float heading, float roll, bool work_switch, bool steer_switch, uint8_t pwmDisplay) {
     // Create the packet
-    AutoSteerData packet = createAutoSteerPacket(actualSteerAngle, heading, roll, false ,steer_switch , pwmDisplay);
+    AutoSteerData packet = createAutoSteerPacket(actualSteerAngle, heading, roll, work_switch ,steer_switch , pwmDisplay);
 
     // Send via UDP
     return send_func(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
@@ -290,9 +291,9 @@ bool sendAutoSteer2Data(uint8_t sensorValue) {
 }
 
 // Send Hello reply to AgIO
-bool sendHelloReply(float actualSteerAngle, uint16_t sensorCounts, bool switchStatus) {
+bool sendHelloReply(float actualSteerAngle, uint16_t sensorCounts, bool work_switch, bool steer_switch) {
     // Create the packet
-    HelloReplyPacket packet = createHelloReplyPacket(actualSteerAngle, sensorCounts, switchStatus);
+    HelloReplyPacket packet = createHelloReplyPacket(actualSteerAngle, sensorCounts, work_switch, steer_switch);
 
     // Send via UDP
     return send_func(reinterpret_cast<uint8_t *>(&packet), sizeof(packet));
