@@ -6,9 +6,9 @@
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
 namespace gps {
-constexpr size_t test_bauds_len          = 3;
-constexpr int test_bauds[test_bauds_len] = {38400, 115200, 230400};
-constexpr int selected_baud              = 230400;
+constexpr size_t test_bauds_len          = 4;
+constexpr int test_bauds[test_bauds_len] = {38400, 115200, 230400,460800};
+constexpr int selected_baud              = 460800;
 
 static bool gpsConnected = false;
 
@@ -29,7 +29,7 @@ bool init() {
         GPSSerial.end();
         GPSSerial.setRxBufferSize(1024 * 5);
         GPSSerial.begin(test_baud, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-        delay(500);
+        delay(200);
         if ((resp = myGNSS.begin(GPSSerial, defaultMaxWait, false))) {
             break;
         }

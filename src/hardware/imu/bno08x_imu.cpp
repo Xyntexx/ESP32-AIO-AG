@@ -19,20 +19,33 @@ bool BNO08XIMU::init() {
     Wire.end();
     Wire.setPins(I2C_SDA_PIN, I2C_SCL_PIN);
     Wire.begin();
+    
+    const int maxRetries = 3;
+    const int retryDelayMs = 200;
+    
+    for (int i = 0; i < maxRetries; i++) {
+        if (bno08x.begin()) {
+            debug("BNO08X initialized successfully");
+            I2C_MUTEX_UNLOCK();
+            initialized = true;
 
-    if (!bno08x.begin()) {
-        error("Failed to initialize BNO08X");
-        I2C_MUTEX_UNLOCK();
-        return false;
+            imu::IMUInterface interface;
+            interface.heading = getHeading;
+            interface.roll = getRoll;
+            imu::init(interface);
+            return true;
+        }
+        
+        warningf("Failed to initialize BNO08X (attempt %d/%d)", i + 1, maxRetries);
+        if (i < maxRetries - 1) {
+            debugf("Retrying in %d ms...", retryDelayMs);
+            delay(retryDelayMs);
+        }
     }
+    
+    errorf("BNO08X initialization failed after %d attempts", maxRetries);
     I2C_MUTEX_UNLOCK();
-    initialized = true;
-
-    imu::IMUInterface interface;
-    interface.heading = getHeading;
-    interface.roll = getRoll;
-    imu::init(interface);
-    return true;
+    return false;
 }
 
 void BNO08XIMU::handler(){
