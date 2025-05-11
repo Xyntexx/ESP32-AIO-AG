@@ -10,7 +10,7 @@
 [[noreturn]] void was_task(void *pv_parameters) {
     for (;;) {
         hw::ADS1115WAS::handler();
-        vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz update rate
+        vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz update rate
     }
 }
 

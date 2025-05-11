@@ -28,4 +28,6 @@
 #define STEER_UDP_PORT 8888
 #define GPS_UDP_PORT 2233
 
+#define WAS_LPF_ALPHA 0.06f // Low-pass filter alpha value for WAS
+
 #endif // DEFINES_H

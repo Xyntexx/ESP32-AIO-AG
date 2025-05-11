@@ -11,6 +11,8 @@ ADS1115_lite ADS1115WAS::ads1115;
 int16_t ADS1115WAS::actual_steer_pos_raw = 0;
 bool ADS1115WAS::first_read = true;
 
+int16_t smoothed_steer_pos_raw = 0;
+
 bool ADS1115WAS::init() {
     debug("Initializing ADS1115 WAS");
     I2C_MUTEX_LOCK();
@@ -47,7 +49,11 @@ bool ADS1115WAS::init() {
 int16_t ADS1115WAS::readRaw() {
     // moving 0 to 2.5V and dividing by 2.
     // range should be now +- 6_666
-    return (actual_steer_pos_raw - (32767 /6.144 * 2.5))/2;
+    int16_t centered = (actual_steer_pos_raw - (32767 / 6.144 * 2.5))/2;
+
+    smoothed_steer_pos_raw = centered * WAS_LPF_ALPHA + smoothed_steer_pos_raw * (1 - WAS_LPF_ALPHA);
+
+    return smoothed_steer_pos_raw;
 }
 
 void ADS1115WAS::handler() {
