@@ -20,7 +20,7 @@ const int TARGET_BAUD                = 115200;
 const uint8_t PGN_GPS_MAIN = 0xD6; // 214 - Main Antenna GPS
 
 // Function declarations
-namespace gps {
+namespace gps_main {
 // Initialization
 bool init();
 void handler();

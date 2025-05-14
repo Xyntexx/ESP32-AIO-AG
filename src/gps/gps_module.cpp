@@ -5,7 +5,7 @@
 #include "../utils/log.h"
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
-namespace gps {
+namespace gps_main {
 constexpr size_t test_bauds_len          = 4;
 constexpr int test_bauds[test_bauds_len] = {38400, 115200, 230400,460800};
 constexpr int selected_baud              = 460800;
@@ -16,21 +16,21 @@ static bool gpsConnected = false;
 static bool (*udp_send_func)(const uint8_t *, size_t) = nullptr;
 
 // GNSS module instance
-static SFE_UBLOX_GNSS myGNSS;
+static SFE_UBLOX_GNSS mainGNSS;
 
 bool configureGPS();
 
 // Initialize GPS module
 bool init() {
     bool resp = false;
-    debug("Initializing GPS...");
+    debug("Initializing MAIN_GPS...");
     for (const int test_baud: test_bauds) {
         debugf("Testing baud rate: %d", test_baud);
         GPSSerial.end();
         GPSSerial.setRxBufferSize(1024 * 5);
-        GPSSerial.begin(test_baud, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+        GPSSerial.begin(test_baud, SERIAL_8N1, MAIN_GPS_RX_PIN, MAIN_GPS_TX_PIN);
         delay(200);
-        if ((resp = myGNSS.begin(GPSSerial, defaultMaxWait, false))) {
+        if ((resp = mainGNSS.begin(GPSSerial, defaultMaxWait, false))) {
             break;
         }
     }
@@ -51,11 +51,11 @@ bool configureGPS() {
     bool resp = true;
     // update uart1 baud rate
     debugf("Setting UART1 baud rate to %d", selected_baud);
-    myGNSS.setSerialRate(selected_baud, COM_PORT_UART1); // Set the UART port to fast baud rate
+    mainGNSS.setSerialRate(selected_baud, COM_PORT_UART1); // Set the UART port to fast baud rate
     GPSSerial.end();
     GPSSerial.setRxBufferSize(1024 * 5);
-    GPSSerial.begin(selected_baud, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-    resp = myGNSS.begin(GPSSerial, defaultMaxWait, false);
+    GPSSerial.begin(selected_baud, SERIAL_8N1, MAIN_GPS_RX_PIN, MAIN_GPS_TX_PIN);
+    resp = mainGNSS.begin(GPSSerial, defaultMaxWait, false);
 
     if (GPS_DEFAULT_CONFIGURATION) {
         //we could configure the gps module here. Not used for dual antenna setups and custom configurations
@@ -80,9 +80,9 @@ bool configureGPS() {
     }
 
     if (resp == false) {
-        error("GPS - Failed to set GPS mode.");
+        error("MAIN_GPS - Failed to set GPS mode.");
     } else {
-        debug("GPS - Module configuration complete");
+        debug("MAIN_GPS - Module configuration complete");
     }
     return resp;
 }
@@ -133,6 +133,6 @@ void handler() {
 
 // Initialize GPS communication with UDP sending function and device IP
 void initGpsCommunication(bool (*send_func)(const uint8_t *, size_t), const ip_address &deviceIP) {
-    gps::set_udp_sender(send_func);
+    set_udp_sender(send_func);
 }
 } // namespace gps

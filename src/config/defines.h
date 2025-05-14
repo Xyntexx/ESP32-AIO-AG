@@ -1,6 +1,5 @@
 #ifndef DEFINES_H
 #define DEFINES_H
-#include "Arduino.h"
 
 #define FIRMWARE_VERSION "0.0.1"
 #define BUILD_DATE __DATE__ " " __TIME__
@@ -8,6 +7,9 @@
 #define LOGSerial USBSerial
 
 #define GPSSerial Serial2
+#define GPSSerial2 Serial1
+
+#define GPS_HEADING true
 
 #define STATIC_IP_ADDR {192, 168, 178, 126}
 #define STATIC_GW_ADDR {192, 168, 178, 1}
@@ -23,6 +25,8 @@
 #define AUTOSTEER_TASK_PRIORITY 5
 #define IMU_TASK_PRIORITY 3
 #define GPS_TASK_PRIORITY (10)
+#define HEADING_TASK_PRIORITY (10)
+
 
 #define AgOpenGPS_UDP_PORT 9999
 #define STEER_UDP_PORT 8888

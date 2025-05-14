@@ -3,6 +3,7 @@
 #include "autosteer/autosteer.h"
 #include "autosteer/buttons.h"
 #include "gps/gps_module.h"
+#include "gps/gps_heading.h"
 #include "hardware/was/ads1115_was.h"
 #include "hardware/imu/bno08x_imu.h"
 #include "utils/log.h"
@@ -37,7 +38,14 @@
 
 [[noreturn]] void gpsTask(void *pv_parameters) {
     for (;;) {
-        gps::handler();
+        gps_main::handler();
+        vTaskDelay(pdMS_TO_TICKS(1)); // 1kHz update rate
+    }
+}
+
+[[noreturn]] void headingTask(void *pv_parameters) {
+    for (;;) {
+        gps_heading::handler();
         vTaskDelay(pdMS_TO_TICKS(1)); // 1kHz update rate
     }
 }
@@ -108,9 +116,11 @@ bool create_tasks() {
         );
     if (taskCreated != pdPASS || autoSteerTaskHandle == nullptr) {
         error("Failed to create autoSteer task");
+        return false;
     }
+
     delay(100);
-    debug("Creating GPS task...");
+    debug("Creating MAIN_GPS task...");
     TaskHandle_t gpsTaskHandle = nullptr;
     taskCreated = xTaskCreate(
         gpsTask,
@@ -120,8 +130,26 @@ bool create_tasks() {
         GPS_TASK_PRIORITY,
         &gpsTaskHandle
     );
-    
+    if (taskCreated != pdPASS || gpsTaskHandle == nullptr) {
+        error("Failed to create GPS task");
+        return false;
+    }
+#if GPS_HEADING
+    delay(100);
+    debug("Creating HEADING_GPS task...");
+    TaskHandle_t headingTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        headingTask,
+        "gpsTask",
+        2048,
+        NULL,
+        HEADING_TASK_PRIORITY,
+        &headingTaskHandle
+    );
+#endif
+
     return true;
+
 }
 
 
