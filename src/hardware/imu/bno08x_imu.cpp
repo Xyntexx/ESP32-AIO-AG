@@ -19,8 +19,10 @@ bool BNO08XIMU::init() {
     Wire.end();
     Wire.setPins(I2C_SDA_PIN, I2C_SCL_PIN);
     Wire.begin();
+
+    delay(400);
     
-    const int maxRetries = 3;
+    const int maxRetries   = 5;
     const int retryDelayMs = 200;
     
     for (int i = 0; i < maxRetries; i++) {
