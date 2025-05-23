@@ -12,7 +12,7 @@
 
 namespace gps_heading {
 constexpr size_t test_bauds_len          = 4;
-constexpr int test_bauds[test_bauds_len] = {38400, 115200, 230400,460800};
+constexpr int test_bauds[test_bauds_len] = {460800, 230400, 115200,38400};
 constexpr int selected_baud              = 460800;
 
 static bool gpsConnected = false;
@@ -41,7 +41,7 @@ bool init() {
     }
 
     if (!resp) {
-        error("GPS - Not detected");
+        error("HEADING_GPS - Not detected");
         gpsConnected = false;
         return false;
     }
@@ -52,46 +52,84 @@ bool init() {
     return true;
 }
 
-// Function to calculate NMEA checksum - simplified
+// Function to calculate NMEA checksum - improved for safety
 uint8_t CalculateChecksum(const char* sentence, size_t len) {
     uint8_t sum = 0;
-    // Skip the $ at the beginning
-    for (int i = 0; i < len; i++) {
+    // Check for null pointer and valid length
+    if (sentence == nullptr || len == 0) {
+        return sum;
+    }
+    
+    // Use size_t for loop counter to match len parameter type
+    for (size_t i = 0; i < len; i++) {
         sum ^= sentence[i];
     }
     return sum;
-    // Direct hex conversion without sprintf
-    // sumStr[0] = (sum >> 4) <= 9 ? '0' + (sum >> 4) : 'A' + (sum >> 4) - 10;
-    // sumStr[1] = (sum & 0x0F) <= 9 ? '0' + (sum & 0x0F) : 'A' + (sum & 0x0F) - 10;
-    // sumStr[2] = '\0';
 }
 
 void relposned_callback(UBX_NAV_RELPOSNED_data_t packet) {
-    if (!packet.flags.bits.relPosHeadingValid) return;
-// Process the RELPOSNED data
-    int32_t heading = packet.relPosHeading;
-    // create a $GNHDT message and send it
-    //$GNHDT,123.456,T * 00
+    USBSerial.println("CALLBACK");
 
-    //(0)   Message ID $GNHDT
-    //(1)   Heading in degrees
-    //(2)   T: Indicates heading relative to True North
-    //(3)   The checksum data, always begins with *
-
-    float heading_degrees = heading / 1e5;
-    char message[50];
-    int ret = snprintf(message, sizeof(message), "$GNHDT,%.3f,T", heading_degrees);
-    if (ret < 0 || ret >= sizeof(message)) {
-        error("Failed to create GNHDT message");
+    // Safety: check essential GNSS flags
+    if (!packet.flags.bits.gnssFixOK ||
+        !packet.flags.bits.diffSoln ||
+        !packet.flags.bits.relPosHeadingValid) {
         return;
     }
-    // Calculate checksum
-    uint8_t checksum = CalculateChecksum(message + 1, strlen(message) - 1);
-    // add the checksum to the message
-    snprintf(message + strlen(message), sizeof(message) - strlen(message), "*%02X", checksum);
-    // Send the message
-    debugf("%s", message);
-    udp_send_func(reinterpret_cast<const uint8_t *>(message), strlen(message));
+
+    USBSerial.println("FLAGS OK");
+
+    // Extract relative heading in degrees (from 1e-5 degree units)
+    float heading_degrees = static_cast<float>(packet.relPosHeading) / 1e5f;
+
+    // Prepare the NMEA message - increased buffer size for safety
+    constexpr size_t MESSAGE_SIZE = 128;
+    char message[MESSAGE_SIZE] = {0};
+
+    // Format the base message without checksum
+    int written = snprintf(message, MESSAGE_SIZE, "$GNHDT,%.3f,T", heading_degrees);
+    if (written < 0 || static_cast<size_t>(written) >= MESSAGE_SIZE) {
+        error("Formatting failed or buffer too small for GNHDT message.");
+        return;
+    }
+
+    // Ensure null termination
+    message[MESSAGE_SIZE - 1] = '\0';
+
+    // Calculate checksum (skip initial '$')
+    uint8_t checksum = CalculateChecksum(message + 1, written - 1);
+
+    // Append checksum using remaining buffer space
+    int remaining = MESSAGE_SIZE - written;
+    if (remaining <= 0) {
+        error("No buffer space left for checksum.");
+        return;
+    }
+    
+    int added = snprintf(&message[written], remaining, "*%02X", checksum);
+    if (added < 0 || added >= remaining) {
+        error("Failed to append checksum.");
+        return;
+    }
+
+    // Ensure null termination again after second write
+    message[MESSAGE_SIZE - 1] = '\0';
+
+    // Final message ready
+    USBSerial.print("Final GNHDT: ");
+    USBSerial.println(message);
+
+    // Safety: check if UDP send function is valid and message length is valid
+    if (udp_send_func != nullptr) {
+        size_t msg_len = strlen(message);
+        if (msg_len > 0 && msg_len < MESSAGE_SIZE) {
+            udp_send_func(reinterpret_cast<const uint8_t *>(message), msg_len);
+        } else {
+            error("Invalid message length for UDP transmission.");
+        }
+    } else {
+        error("udp_send_func is null!");
+    }
 }
 
 bool configureGPS() {
@@ -105,18 +143,16 @@ bool configureGPS() {
 
     if (!resp) {
         error("GPS - Not detected");
-        gpsConnected = false;
         return false;
     }
 
 
     resp &= headingGNSS.setAutoRELPOSNEDcallback(relposned_callback);
-    resp &= headingGNSS.setAutoRELPOSNED(true);
 
     if (resp == false) {
         error("HEADING_GPS - Failed to set GPS mode.");
     }else {
-        debug("HEADING_GPS - Module configuration complete");
+        debug("HEADING_GPS - Module configuration complete!");
     }
     return resp;
 }
@@ -137,8 +173,8 @@ void handler() {
     if (!gpsConnected) {
         return;
     }
-
     // Process incoming GPS data
     headingGNSS.checkUblox();
+    headingGNSS.checkCallbacks();
 }
 }
