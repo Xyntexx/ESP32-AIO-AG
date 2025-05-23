@@ -125,7 +125,7 @@ bool create_tasks() {
     taskCreated = xTaskCreate(
         gpsTask,
         "gpsTask",
-        2048,
+        4096,
         NULL,
         GPS_TASK_PRIORITY,
         &gpsTaskHandle
@@ -140,8 +140,8 @@ bool create_tasks() {
     TaskHandle_t headingTaskHandle = nullptr;
     taskCreated = xTaskCreate(
         headingTask,
-        "gpsTask",
-        2048,
+        "headerTask",
+        10000,
         NULL,
         HEADING_TASK_PRIORITY,
         &headingTaskHandle
