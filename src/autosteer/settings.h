@@ -22,10 +22,10 @@ struct SteerConfig {
     uint8_t pulseCountMax = 3;      // Byte 6: Pulse count
     uint8_t was_speed = 0;          // Byte 7: Min speed
     uint8_t setting1 =  0b00000000; // Byte 8: Settings byte 1
-    uint8_t reserved1;              // Byte 9: Reserved
-    uint8_t reserved2;              // Byte 10: Reserved
-    uint8_t reserved3;              // Byte 11: Reserved
-    uint8_t reserved4;              // Byte 12: Reserved
+    uint8_t reserved1 = 0;          // Byte 9: Reserved
+    uint8_t reserved2 = 0;          // Byte 10: Reserved
+    uint8_t reserved3 = 0;          // Byte 11: Reserved
+    uint8_t reserved4 = 0;          // Byte 12: Reserved
 };
 #pragma pack()
 
