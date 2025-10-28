@@ -16,12 +16,10 @@ bool initialized = false;
 bool BNO08XIMU::init() {
     debug("Initializing BNO08X IMU");
     I2C_MUTEX_LOCK();
-    Wire.end();
-    Wire.setPins(I2C_SDA_PIN, I2C_SCL_PIN);
-    Wire.begin();
 
-    delay(400);
-    
+    // Wire is already initialized by i2c_manager, no need to call begin()
+    delay(400);  // Give sensor time to power up
+
     const int maxRetries   = 5;
     const int retryDelayMs = 200;
     

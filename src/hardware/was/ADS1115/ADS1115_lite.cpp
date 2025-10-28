@@ -14,7 +14,7 @@
 ADS1115_lite::ADS1115_lite(uint8_t i2cAddress)
     : _i2cAddress(i2cAddress), _gain(ADS1115_GAIN_2_048V),
       _mux(ADS1115_MUX_DIFF_0_1), _rate(ADS1115_DR_128SPS) {
-  Wire.begin();
+  // Wire is initialized by i2c_manager, no need to call begin() here
 }
 
 bool ADS1115_lite::isConnected() const {
