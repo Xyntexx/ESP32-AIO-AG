@@ -120,13 +120,24 @@ int buffer_pos = 0; // Initialize buffer position
 void handler() {
     // Check if there's data coming from the serial port
     if (gpsConnected && udp_send_func != nullptr) {
-        while (GPSSerial.available() && buffer_pos < buffer_size - 1) {
-            char c               = GPSSerial.read();
+        while (GPSSerial.available()) {
+            char c = GPSSerial.read();
+
+            // Check for buffer overflow before adding character
+            if (buffer_pos >= buffer_size - 1) {
+                error("GPS buffer overflow, resetting buffer");
+                buffer_pos = 0;
+                break;
+            }
+
             buffer[buffer_pos++] = c;
-        }
-        if (buffer_pos > 0) {
-            udp_send_func(buffer, buffer_pos);
-            buffer_pos = 0; // Reset buffer after sending
+
+            // NMEA sentences end with newline - send complete sentence
+            if (c == '\n') {
+                udp_send_func(buffer, buffer_pos);
+                buffer_pos = 0;
+                break; // Process one sentence per handler call
+            }
         }
     }
 }
