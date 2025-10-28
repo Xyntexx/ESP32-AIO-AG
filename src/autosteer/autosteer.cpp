@@ -7,6 +7,7 @@
 #include "motor.h"
 #include "imu.h"
 #include "config/defines.h"
+#include "config/constants.h"
 
 namespace autosteer {
 bool prevSteerEnable = false;
@@ -33,8 +34,8 @@ void handler() {
 
     auto control_out = calcSteeringPID(steerAngleError); //do the pid
 
-    // Properly limit the PWM value to 0-255 range
-    uint8_t pwm   = min(abs(control_out), 255);
+    // Properly limit the PWM value to valid range
+    uint8_t pwm   = min(abs(control_out), MAX_PWM_VALUE);
     bool reversed = control_out < 0;
 
     if (steerEnable) {

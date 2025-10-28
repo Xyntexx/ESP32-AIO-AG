@@ -1,4 +1,5 @@
 #include "udp_io.h"
+#include "../config/constants.h"
 
 #include "autosteer_config.h"
 #include "was.h"
@@ -208,14 +209,13 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 gpsSpeed           = static_cast<float>(steerData->speed) * 0.1f;
                 guidanceStatus     = steerData->status & 0x01;
 
-                // Decode steering angle (int16_t encoded as uint16_t * 0.01)
-                // Protocol encodes -360 to +360 degrees as 0 to 65535
-                // Values > 32767 (327.67 degrees) represent negative angles
+                // Decode steering angle (int16_t encoded as uint16_t * scale factor)
+                // Protocol encodes angles as int16 * 100
                 int16_t raw_angle = static_cast<int16_t>(steerData->steerAngle);
-                steerAngleSetPoint = static_cast<float>(raw_angle) * 0.01f;
+                steerAngleSetPoint = static_cast<float>(raw_angle) * ANGLE_SCALE_FACTOR;
 
-                // Validate angle is within expected range (-360 to +360 degrees)
-                if (steerAngleSetPoint < -360.0f || steerAngleSetPoint > 360.0f) {
+                // Validate angle is within expected range
+                if (steerAngleSetPoint < MIN_STEER_ANGLE_DEG || steerAngleSetPoint > MAX_STEER_ANGLE_DEG) {
                     warningf("Steering angle out of range: %.2f degrees", steerAngleSetPoint);
                     steerAngleSetPoint = 0.0f;  // Default to center
                 }

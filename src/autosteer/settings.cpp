@@ -2,6 +2,7 @@
 
 #include "networking.h"
 #include "utils/log.h"
+#include "config/constants.h"
 
 Storage Set;
 
@@ -16,16 +17,16 @@ static bool validateSettings(SteerSettings& s, SteerConfig& c) {
     bool valid = true;
 
     // Validate PID gains (0-255 range)
-    if (s.gainP > 255) {
-        warning("Invalid Kp value, clamping to 255");
-        s.gainP = 255;
+    if (s.gainP > MAX_PWM_VALUE) {
+        warningf("Invalid Kp value, clamping to %d", MAX_PWM_VALUE);
+        s.gainP = MAX_PWM_VALUE;
         valid = false;
     }
 
     // Validate PWM limits
-    if (s.highPWM > 255) {
-        warning("Invalid highPWM, clamping to 255");
-        s.highPWM = 255;
+    if (s.highPWM > MAX_PWM_VALUE) {
+        warningf("Invalid highPWM, clamping to %d", MAX_PWM_VALUE);
+        s.highPWM = MAX_PWM_VALUE;
         valid = false;
     }
 
@@ -37,17 +38,18 @@ static bool validateSettings(SteerSettings& s, SteerConfig& c) {
         valid = false;
     }
 
-    // Validate Ackerman fix (prevent division issues, reasonable range 50-150%)
-    if (c.pulseCountMax < 50 || c.pulseCountMax > 150) {
-        warning("Ackerman fix out of range (50-150), using 100");
-        c.pulseCountMax = 100;
+    // Validate Ackerman fix (prevent division issues, reasonable range)
+    if (c.pulseCountMax < MIN_ACKERMAN_FIX || c.pulseCountMax > MAX_ACKERMAN_FIX) {
+        warningf("Ackerman fix out of range (%d-%d), using %d",
+                 MIN_ACKERMAN_FIX, MAX_ACKERMAN_FIX, DEFAULT_ACKERMAN_FIX);
+        c.pulseCountMax = DEFAULT_ACKERMAN_FIX;
         valid = false;
     }
 
     // Validate sensor counts (must be non-zero)
     if (s.steerSensorCounts == 0) {
-        warning("Steering sensor counts is zero, using default 110");
-        s.steerSensorCounts = 110;
+        warningf("Steering sensor counts is zero, using default %d", DEFAULT_SENSOR_COUNTS);
+        s.steerSensorCounts = DEFAULT_SENSOR_COUNTS;
         valid = false;
     }
 
