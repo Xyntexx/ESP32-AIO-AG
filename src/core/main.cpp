@@ -53,31 +53,31 @@ void loop() {
     task = xTaskGetHandle("was_task");
     if (task) {
       hwm = uxTaskGetStackHighWaterMark(task);
-      if (hwm < 512) warning("was_task low stack: %u bytes free", hwm);
+      if (hwm < 512) warningf("was_task low stack: %u bytes free", hwm);
     }
 
     task = xTaskGetHandle("imu_task");
     if (task) {
       hwm = uxTaskGetStackHighWaterMark(task);
-      if (hwm < 512) warning("imu_task low stack: %u bytes free", hwm);
+      if (hwm < 512) warningf("imu_task low stack: %u bytes free", hwm);
     }
 
     task = xTaskGetHandle("autoSteerTask");
     if (task) {
       hwm = uxTaskGetStackHighWaterMark(task);
-      if (hwm < 512) warning("autoSteerTask low stack: %u bytes free", hwm);
+      if (hwm < 512) warningf("autoSteerTask low stack: %u bytes free", hwm);
     }
 
     task = xTaskGetHandle("gpsTask");
     if (task) {
       hwm = uxTaskGetStackHighWaterMark(task);
-      if (hwm < 512) warning("gpsTask low stack: %u bytes free", hwm);
+      if (hwm < 512) warningf("gpsTask low stack: %u bytes free", hwm);
     }
 
     task = xTaskGetHandle("headingTask");
     if (task) {
       hwm = uxTaskGetStackHighWaterMark(task);
-      if (hwm < 512) warning("headingTask low stack: %u bytes free", hwm);
+      if (hwm < 512) warningf("headingTask low stack: %u bytes free", hwm);
     }
   }
 
