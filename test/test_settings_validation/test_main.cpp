@@ -55,8 +55,8 @@ namespace settings {
 
 // Test: Valid settings should pass validation
 void test_valid_settings_pass() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
     s.gainP = 100;
     s.highPWM = 200;
@@ -74,29 +74,29 @@ void test_valid_settings_pass() {
     TEST_ASSERT_EQUAL(100, c.pulseCountMax);
 }
 
-// Test: High PWM exceeds limit - should clamp to MAX_PWM_VALUE
+// Test: High PWM at maximum allowed value (255)
 void test_high_pwm_clamping() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
     s.gainP = 100;
-    s.highPWM = 300; // Invalid
+    s.highPWM = 255; // Maximum uint8_t value, should be valid
     s.minPWM = 50;
     s.steerSensorCounts = 110;
     c.pulseCountMax = 100;
 
     bool result = settings::validateSettings(s, c);
 
-    TEST_ASSERT_FALSE(result);
-    TEST_ASSERT_EQUAL(MAX_PWM_VALUE, s.highPWM);
+    TEST_ASSERT_TRUE(result);  // Should pass since 255 is valid
+    TEST_ASSERT_EQUAL(255, s.highPWM);
 }
 
-// Test: gainP exceeds limit - should clamp to MAX_PWM_VALUE
+// Test: gainP at maximum allowed value (255)
 void test_gainp_clamping() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
-    s.gainP = 300; // Invalid
+    s.gainP = 255; // Maximum uint8_t value, should be valid
     s.highPWM = 200;
     s.minPWM = 50;
     s.steerSensorCounts = 110;
@@ -104,14 +104,14 @@ void test_gainp_clamping() {
 
     bool result = settings::validateSettings(s, c);
 
-    TEST_ASSERT_FALSE(result);
-    TEST_ASSERT_EQUAL(MAX_PWM_VALUE, s.gainP);
+    TEST_ASSERT_TRUE(result);  // Should pass since 255 is valid
+    TEST_ASSERT_EQUAL(255, s.gainP);
 }
 
 // Test: minPWM > highPWM - should swap values
 void test_pwm_swap() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
     s.gainP = 100;
     s.highPWM = 50;  // Lower than minPWM
@@ -128,8 +128,8 @@ void test_pwm_swap() {
 
 // Test: Ackerman fix too low - should default
 void test_ackerman_fix_too_low() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
     s.gainP = 100;
     s.highPWM = 200;
@@ -145,8 +145,8 @@ void test_ackerman_fix_too_low() {
 
 // Test: Ackerman fix too high - should default
 void test_ackerman_fix_too_high() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
     s.gainP = 100;
     s.highPWM = 200;
@@ -162,8 +162,8 @@ void test_ackerman_fix_too_high() {
 
 // Test: Zero sensor counts - should default
 void test_zero_sensor_counts() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
     s.gainP = 100;
     s.highPWM = 200;
@@ -179,10 +179,10 @@ void test_zero_sensor_counts() {
 
 // Test: Multiple invalid values - should correct all
 void test_multiple_invalid_values() {
-    settings::SteerSettings s;
-    settings::SteerConfig c;
+    SteerSettings s;
+    SteerConfig c;
 
-    s.gainP = 300;          // Invalid
+    s.gainP = 100;          // Valid (300 would overflow to 44 at compile time)
     s.highPWM = 50;         // Will be swapped
     s.minPWM = 200;         // Will be swapped
     s.steerSensorCounts = 0; // Invalid
@@ -191,7 +191,7 @@ void test_multiple_invalid_values() {
     bool result = settings::validateSettings(s, c);
 
     TEST_ASSERT_FALSE(result);
-    TEST_ASSERT_EQUAL(MAX_PWM_VALUE, s.gainP);
+    TEST_ASSERT_EQUAL(100, s.gainP);  // Unchanged since it was valid
     TEST_ASSERT_EQUAL(200, s.highPWM);  // Swapped
     TEST_ASSERT_EQUAL(50, s.minPWM);    // Swapped
     TEST_ASSERT_EQUAL(DEFAULT_SENSOR_COUNTS, s.steerSensorCounts);

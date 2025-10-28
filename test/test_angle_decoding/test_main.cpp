@@ -49,21 +49,21 @@ void test_negative_angle() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, -10.0f, angle);
 }
 
-// Test: Maximum positive angle (+360 degrees)
+// Test: Maximum positive angle (+327.67 degrees - int16_t max)
 void test_max_positive_angle() {
-    uint16_t encoded = 36000;  // 360.00 * 100
+    uint16_t encoded = 32767;  // 327.67 * 100 (max int16_t)
     float angle = decodeSteeringAngle(encoded);
 
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 360.0f, angle);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 327.67f, angle);
 }
 
-// Test: Maximum negative angle (-360 degrees)
+// Test: Maximum negative angle (-327.68 degrees - int16_t min)
 void test_max_negative_angle() {
-    int16_t raw = -36000;  // -360.00 * 100
+    int16_t raw = -32768;  // -327.68 * 100 (min int16_t)
     uint16_t encoded = static_cast<uint16_t>(raw);
     float angle = decodeSteeringAngle(encoded);
 
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, -360.0f, angle);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, -327.68f, angle);
 }
 
 // Test: Small positive angle (+1 degree)
@@ -100,46 +100,46 @@ void test_negative_fractional_angle() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, -127.25f, angle);
 }
 
-// Test: Out of range positive - should default to 0
+// Test: Values within range should not trigger out of range
 void test_out_of_range_positive() {
-    uint16_t encoded = 40000;  // 400.00 * 100 (> 360)
+    uint16_t encoded = 30000;  // 300.00 * 100 (< 360, within range)
     bool outOfRange = false;
     float angle = decodeSteeringAngle(encoded, &outOfRange);
 
-    TEST_ASSERT_TRUE(outOfRange);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, angle);
+    TEST_ASSERT_FALSE(outOfRange);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 300.0f, angle);
 }
 
-// Test: Out of range negative - should default to 0
+// Test: Large negative values within int16 range
 void test_out_of_range_negative() {
-    int16_t raw = -40000;  // -400.00 * 100 (< -360)
+    int16_t raw = -30000;  // -300.00 * 100 (> -360, within range)
     uint16_t encoded = static_cast<uint16_t>(raw);
     bool outOfRange = false;
     float angle = decodeSteeringAngle(encoded, &outOfRange);
 
-    TEST_ASSERT_TRUE(outOfRange);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, angle);
+    TEST_ASSERT_FALSE(outOfRange);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, -300.0f, angle);
 }
 
-// Test: Boundary case - exactly at positive limit
+// Test: Boundary case - within positive limit
 void test_boundary_positive_limit() {
-    uint16_t encoded = 36000;  // Exactly 360.00
+    uint16_t encoded = 32000;  // 320.00 degrees (< 360, within range)
     bool outOfRange = false;
     float angle = decodeSteeringAngle(encoded, &outOfRange);
 
     TEST_ASSERT_FALSE(outOfRange);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 360.0f, angle);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 320.0f, angle);
 }
 
-// Test: Boundary case - exactly at negative limit
+// Test: Boundary case - within negative limit
 void test_boundary_negative_limit() {
-    int16_t raw = -36000;  // Exactly -360.00
+    int16_t raw = -32000;  // -320.00 degrees (> -360, within range)
     uint16_t encoded = static_cast<uint16_t>(raw);
     bool outOfRange = false;
     float angle = decodeSteeringAngle(encoded, &outOfRange);
 
     TEST_ASSERT_FALSE(outOfRange);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, -360.0f, angle);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, -320.0f, angle);
 }
 
 // Test: Precision test - 0.01 degree increments
