@@ -22,7 +22,7 @@ bool initI2CManager() {
     Wire.setPins(I2C_SDA_PIN, I2C_SCL_PIN);
     Wire.begin();
     Wire.setClock(400000);  // 400kHz I2C clock
-    debug("I2C bus initialized (SDA: %d, SCL: %d, 400kHz)", I2C_SDA_PIN, I2C_SCL_PIN);
+    debugf("I2C bus initialized (SDA: %d, SCL: %d, 400kHz)", I2C_SDA_PIN, I2C_SCL_PIN);
 
     return true;
 }
