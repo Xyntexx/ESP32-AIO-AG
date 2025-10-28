@@ -207,11 +207,17 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
                 // Extract and convert values
                 gpsSpeed           = static_cast<float>(steerData->speed) * 0.1f;
                 guidanceStatus     = steerData->status & 0x01;
-                steerAngleSetPoint = static_cast<float>(steerData->steerAngle) * 0.01f;
 
-                // Adjust for negative values if needed
-                if (steerAngleSetPoint > 500.0f) {
-                    steerAngleSetPoint -= 655.35f;
+                // Decode steering angle (int16_t encoded as uint16_t * 0.01)
+                // Protocol encodes -360 to +360 degrees as 0 to 65535
+                // Values > 32767 (327.67 degrees) represent negative angles
+                int16_t raw_angle = static_cast<int16_t>(steerData->steerAngle);
+                steerAngleSetPoint = static_cast<float>(raw_angle) * 0.01f;
+
+                // Validate angle is within expected range (-360 to +360 degrees)
+                if (steerAngleSetPoint < -360.0f || steerAngleSetPoint > 360.0f) {
+                    warningf("Steering angle out of range: %.2f degrees", steerAngleSetPoint);
+                    steerAngleSetPoint = 0.0f;  // Default to center
                 }
 
                 sectionControlByte = steerData->sectionLo;

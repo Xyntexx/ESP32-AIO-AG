@@ -17,13 +17,43 @@ bool init(){
         error("FATAL: I2C Manager initialization failed");
         return false;
     }
-    Settings::init();
-    Buttons::init();
-    BNO08XIMU::init(); // Init BNO first since they use the same i2c.
-    ADS1115WAS::init();
-    PWMMotor::init();
-    gps_main::init();
-    gps_heading::init();
+
+    if (!Settings::init()) {
+        error("Settings initialization failed");
+        return false;
+    }
+
+    if (!Buttons::init()) {
+        error("Buttons initialization failed");
+        return false;
+    }
+
+    // Init BNO first since it uses I2C
+    if (!BNO08XIMU::init()) {
+        error("BNO08X IMU initialization failed");
+        return false;
+    }
+
+    if (!ADS1115WAS::init()) {
+        error("ADS1115 WAS initialization failed");
+        return false;
+    }
+
+    if (!PWMMotor::init()) {
+        error("PWM Motor initialization failed");
+        return false;
+    }
+
+    if (!gps_main::init()) {
+        error("Main GPS initialization failed");
+        return false;
+    }
+
+    if (!gps_heading::init()) {
+        error("GPS Heading initialization failed");
+        return false;
+    }
+
     debug("Hardware initialization done!");
     return true;
 }
