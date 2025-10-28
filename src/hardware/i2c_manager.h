@@ -5,7 +5,7 @@
 #include <Wire.h>
 
 //create I2C lock
-#define I2C_MUTEX_LOCK() (xSemaphoreTake(i2cMutex, portMAX_DELAY) != pdTRUE)
+#define I2C_MUTEX_LOCK() (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE)
 #define I2C_MUTEX_UNLOCK() xSemaphoreGive(i2cMutex)
 extern SemaphoreHandle_t i2cMutex;
 
