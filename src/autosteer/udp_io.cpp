@@ -96,7 +96,7 @@ HelloReplyPacket createHelloReplyPacket(float actualSteerAngle, uint16_t sensorC
     packet.angleHi    = (angle >> 8) & 0xFF; // High byte
     packet.countsLo   = sensorCounts & 0xFF; // Low byte
     packet.countsHi   = (sensorCounts >> 8) & 0xFF; // High byte
-    packet.switchByte = steer_switch ? 1 : 0 | ((work_switch ? 1 : 0) << 1);
+    packet.switchByte = (steer_switch ? 1 : 0) | ((work_switch ? 1 : 0) << 1);
 
     // Calculate CRC (skipping header, pgn, and length)
     uint8_t *payload = reinterpret_cast<uint8_t *>(&packet) + 3; // Skip header, pgn, length
