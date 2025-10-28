@@ -11,7 +11,53 @@ SteerConfig config;
 // Static interface pointer
 static SettingsInterface hw_interface;
 
+// Validate settings to ensure they are within reasonable ranges
+static bool validateSettings(SteerSettings& s, SteerConfig& c) {
+    bool valid = true;
+
+    // Validate PID gains (0-255 range)
+    if (s.gainP > 255) {
+        warning("Invalid Kp value, clamping to 255");
+        s.gainP = 255;
+        valid = false;
+    }
+
+    // Validate PWM limits
+    if (s.highPWM > 255) {
+        warning("Invalid highPWM, clamping to 255");
+        s.highPWM = 255;
+        valid = false;
+    }
+
+    if (s.minPWM > s.highPWM) {
+        warning("minPWM > highPWM, swapping values");
+        uint8_t temp = s.minPWM;
+        s.minPWM = s.highPWM;
+        s.highPWM = temp;
+        valid = false;
+    }
+
+    // Validate Ackerman fix (prevent division issues, reasonable range 50-150%)
+    if (c.pulseCountMax < 50 || c.pulseCountMax > 150) {
+        warning("Ackerman fix out of range (50-150), using 100");
+        c.pulseCountMax = 100;
+        valid = false;
+    }
+
+    // Validate sensor counts (must be non-zero)
+    if (s.steerSensorCounts == 0) {
+        warning("Steering sensor counts is zero, using default 110");
+        s.steerSensorCounts = 110;
+        valid = false;
+    }
+
+    return valid;
+}
+
 void parse() {
+    // Validate settings before parsing
+    validateSettings(settings, config);
+
     Set.gainP             = settings.gainP; // 5
     Set.maxPWM            = settings.highPWM; // 6
     Set.lowPWM            = settings.lowPWM; // 7
