@@ -11,10 +11,19 @@ BNO085 BNO08XIMU::bno08x;
 float BNO08XIMU::heading = 0.0f;
 float BNO08XIMU::roll = 0.0f;
 float BNO08XIMU::pitch = 0.0f;
+SemaphoreHandle_t BNO08XIMU::dataMutex = nullptr;
 bool initialized = false;
 
 bool BNO08XIMU::init() {
     debug("Initializing BNO08X IMU");
+
+    // Create data mutex for thread-safe access to IMU readings
+    dataMutex = xSemaphoreCreateMutex();
+    if (!dataMutex) {
+        error("Failed to create IMU data mutex");
+        return false;
+    }
+
     I2C_MUTEX_LOCK();
 
     // Wire is already initialized by i2c_manager, no need to call begin()
@@ -22,7 +31,7 @@ bool BNO08XIMU::init() {
 
     const int maxRetries   = 5;
     const int retryDelayMs = 200;
-    
+
     for (int i = 0; i < maxRetries; i++) {
         if (bno08x.begin()) {
             debug("BNO08X initialized successfully");
@@ -53,19 +62,37 @@ void BNO08XIMU::handler(){
         return;
     }
     I2C_MUTEX_LOCK();
-    heading = bno08x.getHeading();
-    roll = bno08x.getRoll();
-    pitch = bno08x.getPitch();
+    float tempHeading = bno08x.getHeading();
+    float tempRoll = bno08x.getRoll();
+    float tempPitch = bno08x.getPitch();
     bno08x.update();
     I2C_MUTEX_UNLOCK();
+
+    // Update shared variables with mutex protection
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        heading = tempHeading;
+        roll = tempRoll;
+        pitch = tempPitch;
+        xSemaphoreGive(dataMutex);
+    }
 }
 
 float BNO08XIMU::getHeading(){
-    return heading;
+    float value = 0.0f;
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        value = heading;
+        xSemaphoreGive(dataMutex);
+    }
+    return value;
 }
 
 float BNO08XIMU::getRoll(){
-    return roll;
+    float value = 0.0f;
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        value = roll;
+        xSemaphoreGive(dataMutex);
+    }
+    return value;
 }
 
 } // namespace hw

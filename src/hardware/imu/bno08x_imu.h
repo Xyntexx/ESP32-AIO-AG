@@ -3,6 +3,8 @@
 
 #include "../../autosteer/imu.h"
 #include "BNO085/BNO085.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 namespace hw {
 
@@ -19,6 +21,7 @@ private:
     static float heading;
     static float roll;
     static float pitch;
+    static SemaphoreHandle_t dataMutex;  // Mutex to protect IMU data
 };
 
 } // namespace hw
