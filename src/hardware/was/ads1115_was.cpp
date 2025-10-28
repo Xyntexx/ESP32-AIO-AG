@@ -14,9 +14,8 @@ bool ADS1115WAS::first_read = true;
 bool ADS1115WAS::init() {
     debug("Initializing ADS1115 WAS");
     I2C_MUTEX_LOCK();
-    Wire.end();
-    Wire.setPins(I2C_SDA_PIN, I2C_SCL_PIN);
-    Wire.begin();
+
+    // Wire is already initialized by i2c_manager, no need to call begin()
 
     if (ads1115.isConnected()) {
         debug("WAS ADC Connection OK");
