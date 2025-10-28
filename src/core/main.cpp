@@ -24,7 +24,10 @@ void setup() {
   debug("Ethernet initialized");
   initUDPLogging();
 
-  hw::init();
+  if (!hw::init()) {
+    error("FATAL: Hardware initialization failed! System halted.");
+    while(1) { delay(1000); }
+  }
   debug("Hardware initialized");
 
   create_tasks();

@@ -13,7 +13,10 @@
 namespace hw{
 
 bool init(){
-    initI2CManager();
+    if (!initI2CManager()) {
+        error("FATAL: I2C Manager initialization failed");
+        return false;
+    }
     Settings::init();
     Buttons::init();
     BNO08XIMU::init(); // Init BNO first since they use the same i2c.
