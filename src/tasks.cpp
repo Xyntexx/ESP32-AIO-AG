@@ -140,12 +140,17 @@ bool create_tasks() {
     TaskHandle_t headingTaskHandle = nullptr;
     taskCreated = xTaskCreate(
         headingTask,
-        "headerTask",
+        "headingTask",  // Fixed typo: was "headerTask"
         10000,
         NULL,
         HEADING_TASK_PRIORITY,
         &headingTaskHandle
     );
+
+    if (!taskCreated) {
+        error("Failed to create HEADING_GPS task");
+        return false;
+    }
 #endif
 
     return true;
