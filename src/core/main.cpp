@@ -41,5 +41,45 @@ void setup() {
 
 
 void loop() {
+  // Periodic stack monitoring (every 10 seconds)
+  static unsigned long lastStackCheck = 0;
+  if (millis() - lastStackCheck > 10000) {
+    lastStackCheck = millis();
+
+    // Get handles and check stack usage
+    TaskHandle_t task;
+    UBaseType_t hwm;
+
+    task = xTaskGetHandle("was_task");
+    if (task) {
+      hwm = uxTaskGetStackHighWaterMark(task);
+      if (hwm < 512) warning("was_task low stack: %u bytes free", hwm);
+    }
+
+    task = xTaskGetHandle("imu_task");
+    if (task) {
+      hwm = uxTaskGetStackHighWaterMark(task);
+      if (hwm < 512) warning("imu_task low stack: %u bytes free", hwm);
+    }
+
+    task = xTaskGetHandle("autoSteerTask");
+    if (task) {
+      hwm = uxTaskGetStackHighWaterMark(task);
+      if (hwm < 512) warning("autoSteerTask low stack: %u bytes free", hwm);
+    }
+
+    task = xTaskGetHandle("gpsTask");
+    if (task) {
+      hwm = uxTaskGetStackHighWaterMark(task);
+      if (hwm < 512) warning("gpsTask low stack: %u bytes free", hwm);
+    }
+
+    task = xTaskGetHandle("headingTask");
+    if (task) {
+      hwm = uxTaskGetStackHighWaterMark(task);
+      if (hwm < 512) warning("headingTask low stack: %u bytes free", hwm);
+    }
+  }
+
   delay(1000);
 }
