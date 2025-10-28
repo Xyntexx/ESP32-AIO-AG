@@ -35,7 +35,7 @@ void handler() {
     auto control_out = calcSteeringPID(steerAngleError); //do the pid
 
     // Properly limit the PWM value to valid range
-    uint8_t pwm   = min(abs(control_out), MAX_PWM_VALUE);
+    uint8_t pwm   = min(static_cast<uint8_t>(abs(control_out)), MAX_PWM_VALUE);
     bool reversed = control_out < 0;
 
     if (steerEnable) {
