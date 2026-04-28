@@ -8,6 +8,9 @@
 #include "imu.h"
 #include "config/defines.h"
 #include "config/constants.h"
+#if KEYA_MOTOR
+#include "hardware/motor/keya_motor.h"
+#endif
 
 namespace autosteer {
 bool prevSteerEnable = false;
@@ -39,7 +42,20 @@ void handler() {
     bool reversed = control_out < 0;
 
     if (steerEnable) {
+#if KEYA_MOTOR
+        if (!hw::KeyaMotor::isHealthy()) {
+            static unsigned long lastKeyaWarn = 0;
+            if (millis() - lastKeyaWarn > 1000) {
+                error("Keya motor unhealthy (no heartbeat or fault) - refusing engage");
+                lastKeyaWarn = millis();
+            }
+            motor::stopMotor();
+        } else {
+            motor::driveMotor(pwm, reversed);
+        }
+#else
         motor::driveMotor(pwm, reversed); //out to motors the pwm value
+#endif
     } else {
         motor::stopMotor();
         pulseCount = 0; //Reset counters if Autosteer is offline
