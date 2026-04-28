@@ -1,5 +1,6 @@
 #include "hardware.h"
 
+#include "config/defines.h"
 #include "i2c_manager.h"
 #include "imu/bno08x_imu.h"
 #include "was/ads1115_was.h"
@@ -49,10 +50,14 @@ bool init(){
         return false;
     }
 
+#if GPS_HEADING
     if (!gps_heading::init()) {
         error("GPS Heading initialization failed");
         return false;
     }
+#else
+    debug("GPS heading disabled (single-GPS build)");
+#endif
 
     debug("Hardware initialization done!");
     return true;
