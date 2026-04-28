@@ -15,6 +15,19 @@
 #define GPS_HEADING 0
 #endif
 
+// Motor backend selection. 0 = PWM (Cytron/Danfoss-style), 1 = Keya CAN bus.
+// Override per-environment via platformio.ini build_flags (-DKEYA_MOTOR=1).
+#ifndef KEYA_MOTOR
+#define KEYA_MOTOR 0
+#endif
+
+// Bench-test affordance: when set, the TWAI driver runs in NO_ACK mode so a
+// solo ESP32 with no other CAN node on the bus can still transmit frames for
+// inspection on a sniffer. Off in production - leave at 0 unless debugging.
+#ifndef KEYA_NO_ACK
+#define KEYA_NO_ACK 0
+#endif
+
 #define STATIC_IP_ADDR {192, 168, 178, 126}
 #define STATIC_GW_ADDR {192, 168, 178, 1}
 #define STATIC_SN_ADDR {255, 255, 255, 0}
@@ -39,6 +52,7 @@
 #define IMU_TASK_PRIORITY 3
 #define GPS_TASK_PRIORITY (10)
 #define HEADING_TASK_PRIORITY (10)
+#define KEYA_TASK_PRIORITY 3
 
 
 #define AgOpenGPS_UDP_PORT 9999
