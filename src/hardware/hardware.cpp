@@ -4,7 +4,11 @@
 #include "i2c_manager.h"
 #include "imu/bno08x_imu.h"
 #include "was/ads1115_was.h"
+#if KEYA_MOTOR
+#include "motor/keya_motor.h"
+#else
 #include "motor/pwm_motor.h"
+#endif
 #include "buttons/buttons_hw.h"
 #include "gps/gps_heading.h"
 #include "gps/gps_module.h"
@@ -40,10 +44,17 @@ bool init(){
         return false;
     }
 
+#if KEYA_MOTOR
+    if (!KeyaMotor::init()) {
+        error("Keya Motor initialization failed");
+        return false;
+    }
+#else
     if (!PWMMotor::init()) {
         error("PWM Motor initialization failed");
         return false;
     }
+#endif
 
     if (!gps_main::init()) {
         error("Main GPS initialization failed");

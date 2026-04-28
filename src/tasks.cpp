@@ -6,6 +6,9 @@
 #include "gps/gps_heading.h"
 #include "hardware/was/ads1115_was.h"
 #include "hardware/imu/bno08x_imu.h"
+#if KEYA_MOTOR
+#include "hardware/motor/keya_motor.h"
+#endif
 #include "utils/log.h"
 
 [[noreturn]] void was_task(void *pv_parameters) {
@@ -49,6 +52,17 @@
         vTaskDelay(pdMS_TO_TICKS(1)); // 1kHz update rate
     }
 }
+
+#if KEYA_MOTOR
+[[noreturn]] void keya_task(void *pv_parameters) {
+    for (;;) {
+        hw::KeyaMotor::handler();
+        // handler() blocks up to ~50ms inside twai_receive when idle, so a
+        // short delay here is enough to yield without losing heartbeats.
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+#endif
 
 
 bool create_tasks() {
@@ -149,6 +163,24 @@ bool create_tasks() {
 
     if (!taskCreated) {
         error("Failed to create HEADING_GPS task");
+        return false;
+    }
+#endif
+
+#if KEYA_MOTOR
+    delay(100);
+    debug("Creating Keya CAN task...");
+    TaskHandle_t keyaTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        keya_task,
+        "keya_task",
+        4096,
+        nullptr,
+        KEYA_TASK_PRIORITY,
+        &keyaTaskHandle
+    );
+    if (taskCreated != pdPASS || keyaTaskHandle == nullptr) {
+        error("Failed to create Keya task");
         return false;
     }
 #endif
