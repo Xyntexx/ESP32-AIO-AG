@@ -6,8 +6,8 @@
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 
 namespace gps_main {
-constexpr size_t test_bauds_len          = 0;
-constexpr int test_bauds[test_bauds_len] ={};// {38400, 115200, 230400,460800};
+constexpr int test_bauds[]               = {460800, 38400, 115200, 230400};
+constexpr size_t test_bauds_len          = sizeof(test_bauds) / sizeof(test_bauds[0]);
 constexpr int selected_baud              = 460800;
 
 static bool gpsConnected = false;
