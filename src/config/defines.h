@@ -18,6 +18,11 @@
 
 #define USE_DHCP false
 
+// OTA settings (ArduinoOTA push-to-device firmware updates)
+#define OTA_HOSTNAME "esp32-aio-ag"
+#define OTA_PASSWORD "esp32-aio-ag"
+#define OTA_PORT 3232
+
 #define GPS_DEFAULT_CONFIGURATION false
 
 #define BUTTONS_TASK_PRIORITY 6

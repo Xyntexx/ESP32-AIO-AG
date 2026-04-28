@@ -4,6 +4,7 @@
 #include "autosteer/autosteer.h"
 #include "WebServer_ESP32_SC_W6100.h"
 #include "network/udp.h"
+#include "network/ota.h"
 #include "../hardware/i2c_manager.h"
 #include "hardware/hardware.h"
 #include "tasks.h"
@@ -36,11 +37,15 @@ void setup() {
   initUDP();
   debug("UDP initialized");
 
+  initOTA();
+
   info("System ready");
 }
 
 
 void loop() {
+  handleOTA();
+
   // Periodic stack monitoring (every 10 seconds)
   static unsigned long lastStackCheck = 0;
   if (millis() - lastStackCheck > 10000) {
@@ -81,5 +86,5 @@ void loop() {
     }
   }
 
-  delay(1000);
+  delay(10);
 }
