@@ -22,6 +22,10 @@
 #define OTA_HOSTNAME "esp32-aio-ag"
 #define OTA_PASSWORD "esp32-aio-ag"
 #define OTA_PORT 3232
+// After this many ms of OTA being live, mark the running image valid so the
+// bootloader stops the rollback watch. If we crash or wedge before then, the
+// next boot rolls back to the prior working firmware.
+#define OTA_CONFIRM_DELAY_MS 30000
 
 #define GPS_DEFAULT_CONFIGURATION false
 
