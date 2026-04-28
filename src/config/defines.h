@@ -9,7 +9,11 @@
 #define GPSSerial Serial2
 #define GPSSerial2 Serial1
 
-#define GPS_HEADING true
+// Dual GPS (heading antenna) support. 0 = single-GPS PCB, 1 = dual-GPS PCB.
+// Override per-environment via platformio.ini build_flags (-DGPS_HEADING=1).
+#ifndef GPS_HEADING
+#define GPS_HEADING 0
+#endif
 
 #define STATIC_IP_ADDR {192, 168, 178, 126}
 #define STATIC_GW_ADDR {192, 168, 178, 1}
