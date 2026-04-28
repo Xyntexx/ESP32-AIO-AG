@@ -25,9 +25,16 @@ void setup() {
   debug("Ethernet initialized");
   initUDPLogging();
 
+  // Bring OTA up before hardware init so a bad flash that hangs in
+  // hw::init() can still be recovered remotely.
+  initOTA();
+
   if (!hw::init()) {
-    error("FATAL: Hardware initialization failed! System halted.");
-    while(1) { delay(1000); }
+    error("FATAL: Hardware initialization failed! Halted (OTA still active).");
+    while(1) {
+      handleOTA();
+      delay(10);
+    }
   }
   debug("Hardware initialized");
 
@@ -36,8 +43,6 @@ void setup() {
 
   initUDP();
   debug("UDP initialized");
-
-  initOTA();
 
   info("System ready");
 }
