@@ -31,15 +31,23 @@ void handler() {
 
 #if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
     // Overcurrent override is gated on the AOG-side "Current sensor" or
-    // "Pressure sensor" steerConfig bit (PGN 251 setting1). If the user has
-    // neither enabled, this whole feature is silent. Honors the same bit
-    // the Teensy reference uses, so AOG's existing toggle works.
+    // "Pressure sensor" steerConfig bit (PGN 251 setting1 bits 1/2). The
+    // threshold is taken from PGN 251 byte 6 (pulseCountMax) which AOG's
+    // GUI exposes as the "Steer Wheel Encoder" / "max sensor reading" field
+    // - the same field the Teensy reference uses for this. Heartbeat current
+    // is 1 A per LSB so pulseCountMax * 1000 mA is the trip level. If the
+    // user enables the sensor bit but leaves the threshold at 0, fall back
+    // to the compile-time KEYA_OVERCURRENT_TRIP_MA so the feature still
+    // works without an explicit AOG configuration.
     if (steerEnable && !overcurrentLatched
             && (Set.currentSensor || Set.pressureSensor)) {
+        uint16_t threshold_mA = (Set.pulseCountMax > 0)
+                                ? (uint16_t)Set.pulseCountMax * 1000
+                                : KEYA_OVERCURRENT_TRIP_MA;
         uint16_t now_mA = hw::KeyaMotor::getCurrentMA();
-        if (now_mA >= KEYA_OVERCURRENT_TRIP_MA) {
-            errorf("Keya overcurrent override: %u mA >= %d mA - disengaging",
-                   now_mA, KEYA_OVERCURRENT_TRIP_MA);
+        if (now_mA >= threshold_mA) {
+            errorf("Keya overcurrent override: %u mA >= %u mA - disengaging",
+                   now_mA, threshold_mA);
             overcurrentLatched = true;
         }
     }

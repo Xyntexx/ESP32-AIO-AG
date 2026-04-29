@@ -38,11 +38,16 @@ static bool validateSettings(SteerSettings& s, SteerConfig& c) {
         valid = false;
     }
 
-    // Validate Ackerman fix (prevent division issues, reasonable range)
-    if (c.pulseCountMax < MIN_ACKERMAN_FIX || c.pulseCountMax > MAX_ACKERMAN_FIX) {
+    // Validate Ackerman fix (prevent division issues, reasonable range).
+    // Note: this used to check c.pulseCountMax (PGN 251 byte 6) but ackerman
+    // actually lives in s.ackermanFix (PGN 252 byte 12). The old check
+    // clobbered pulseCountMax with 100 every boot, breaking any AOG-set
+    // override threshold and producing the "Ackerman fix out of range"
+    // warning that fired on every fresh EEPROM regardless of state.
+    if (s.ackermanFix < MIN_ACKERMAN_FIX || s.ackermanFix > MAX_ACKERMAN_FIX) {
         warningf("Ackerman fix out of range (%d-%d), using %d",
                  MIN_ACKERMAN_FIX, MAX_ACKERMAN_FIX, DEFAULT_ACKERMAN_FIX);
-        c.pulseCountMax = DEFAULT_ACKERMAN_FIX;
+        s.ackermanFix = DEFAULT_ACKERMAN_FIX;
         valid = false;
     }
 
