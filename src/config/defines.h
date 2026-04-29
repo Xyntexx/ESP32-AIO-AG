@@ -58,6 +58,16 @@
 #define KEYA_CURRENT_RAW_PER_MA 1000
 #endif
 
+// Milliamps per byte for the value reported in PGN 250 byte 5 (sensorData)
+// and used as the threshold from PGN 251 byte 6 (pulseCountMax). AOG's GUI
+// truncates the byte to a percent via floor(byte * 100/255); for the
+// KY173's 17 A peak rating to land at 90% AOG display we want byte = 230,
+// so 1 byte = 17000/230 ~= 74 mA. Byte 255 then represents ~18.9 A
+// (slightly above peak), giving a small headroom above spec for transients.
+#ifndef KEYA_AOG_MA_PER_BYTE
+#define KEYA_AOG_MA_PER_BYTE 74
+#endif
+
 // Periodic logging of raw heartbeat current bytes during engaged operation.
 // 0 = silent, N = log every Nth heartbeat (~50 Hz cadence so N=10 -> 5 Hz
 // log rate). Useful for calibrating KEYA_CURRENT_RAW_PER_MA.

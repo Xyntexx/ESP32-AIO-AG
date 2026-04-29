@@ -33,21 +33,32 @@ void handler() {
     // Overcurrent override is gated on the AOG-side "Current sensor" or
     // "Pressure sensor" steerConfig bit (PGN 251 setting1 bits 1/2). The
     // threshold is taken from PGN 251 byte 6 (pulseCountMax) which AOG's
-    // GUI exposes as the "Steer Wheel Encoder" / "max sensor reading" field
-    // - the same field the Teensy reference uses for this. Heartbeat current
-    // is 1 A per LSB so pulseCountMax * 1000 mA is the trip level. If the
-    // user enables the sensor bit but leaves the threshold at 0, fall back
-    // to the compile-time KEYA_OVERCURRENT_TRIP_MA so the feature still
-    // works without an explicit AOG configuration.
+    // GUI exposes as a "max sensor reading" field, in the SAME unit AOG
+    // displays the live value (PGN 250 byte 5 = sensorData). We send
+    // sensorData as deciAmps (0.1 A per LSB), so when AOG shows "66" the
+    // motor is at 6.6 A and a "41" threshold fires at 4.1 A. We therefore
+    // compare in deciAmps directly - the trip level the user types in AOG
+    // is exactly the displayed value. If the user enables the sensor bit
+    // but leaves the threshold at 0, fall back to the compile-time
+    // KEYA_OVERCURRENT_TRIP_MA so the feature still works on a fresh
+    // setup before AOG has been configured.
     if (steerEnable && !overcurrentLatched
             && (Set.currentSensor || Set.pressureSensor)) {
-        uint16_t threshold_mA = (Set.pulseCountMax > 0)
-                                ? (uint16_t)Set.pulseCountMax * 1000
-                                : KEYA_OVERCURRENT_TRIP_MA;
         uint16_t now_mA = hw::KeyaMotor::getCurrentMA();
-        if (now_mA >= threshold_mA) {
-            errorf("Keya overcurrent override: %u mA >= %u mA - disengaging",
-                   now_mA, threshold_mA);
+        // Scale to the same 0..255 byte AOG uses for display + threshold,
+        // so pulseCountMax (the AOG-set trip level) compares directly with
+        // the live value AOG sees. 1 byte = KEYA_AOG_MA_PER_BYTE mA, so
+        // 17 A peak <-> byte 230 <-> AOG "90%".
+        uint16_t now_byte = ((uint32_t)now_mA + KEYA_AOG_MA_PER_BYTE / 2)
+                            / KEYA_AOG_MA_PER_BYTE;
+        if (now_byte > 255) now_byte = 255;
+        uint16_t threshold_byte = (Set.pulseCountMax > 0)
+            ? Set.pulseCountMax
+            : ((KEYA_OVERCURRENT_TRIP_MA + KEYA_AOG_MA_PER_BYTE / 2)
+               / KEYA_AOG_MA_PER_BYTE);
+        if (now_byte >= threshold_byte) {
+            errorf("Keya overcurrent override: byte %u >= %u (%u mA) - disengaging",
+                   now_byte, threshold_byte, now_mA);
             overcurrentLatched = true;
         }
     }

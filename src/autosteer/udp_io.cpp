@@ -358,14 +358,17 @@ void sendSteerData() {
     uint8_t pwmDisplay = motor::getCurrentPWM();
 
     // FROM_AUTOSTEER2 byte 5 ("sensorValue" / AOG mc.sensorData). On Keya
-    // builds, fill it with the live motor current scaled to 0.1 A per unit
-    // (0..255 = 0..25.5 A), which covers the KY173 17 A peak with headroom.
+    // builds, scale the live motor current so the motor's 17 A peak rating
+    // lands at AOG's 90% display (byte ~230). 1 byte = KEYA_AOG_MA_PER_BYTE
+    // mA. AOG truncates display via floor(byte * 100/255), so this scaling
+    // gives the user a meaningful percentage where 90% means "at peak".
     // On non-Keya builds, fall back to the raw WAS reading like upstream
     // AOG firmware (used for WAS calibration views in some forks).
 #if KEYA_MOTOR
     uint16_t curMA = hw::KeyaMotor::getCurrentMA();
-    uint16_t deciAmps = (curMA + 50) / 100; // round-half-up to 0.1 A
-    uint8_t sensorValue = (deciAmps > 255) ? 255 : (uint8_t)deciAmps;
+    uint32_t scaled = ((uint32_t)curMA + KEYA_AOG_MA_PER_BYTE / 2)
+                      / KEYA_AOG_MA_PER_BYTE;
+    uint8_t sensorValue = (scaled > 255) ? 255 : (uint8_t)scaled;
 #else
     uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
 #endif
