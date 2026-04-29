@@ -16,14 +16,50 @@ namespace autosteer {
 bool prevSteerEnable = false;
 bool steerEnable     = false;
 int pulseCount       = 0; //TODO:IMPLEMENT ENCODER
+
+#if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
+// Latched override - once tripped, autosteer refuses to re-engage until
+// AOG drops guidance status (which clears the latch on the next disengage).
+// The Keya controller already filters its current reading internally
+// (through its current-loop PI regulator) so we use the raw heartbeat
+// value directly without additional smoothing.
+static bool overcurrentLatched = false;
+#endif
+
 void handler() {
     bool hwEnable = buttons::steerBntEnabled();
     bool swEnable = getSwSwitchStatus();
-    if (hwEnable && swEnable) {
+
+#if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
+    // While engaged, watch for the override.
+    if (steerEnable && !overcurrentLatched) {
+        uint16_t now_mA = hw::KeyaMotor::getCurrentMA();
+        if (now_mA >= KEYA_OVERCURRENT_TRIP_MA) {
+            errorf("Keya overcurrent override: %u mA >= %d mA - disengaging",
+                   now_mA, KEYA_OVERCURRENT_TRIP_MA);
+            overcurrentLatched = true;
+        }
+    }
+#endif
+
+    if (hwEnable && swEnable
+#if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
+            && !overcurrentLatched
+#endif
+        ) {
         steerEnable = true;
     } else {
         steerEnable = false;
     }
+
+#if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
+    // Clear the latch on any deliberate user disengage - either dropping the
+    // AOG software switch OR releasing the physical steer switch/button. That
+    // way the user can re-arm after a fault from whichever input they normally
+    // use, regardless of the configured steer_switch_type. The latch survives
+    // a single engaged session, then clears.
+    if (!hwEnable || !swEnable) overcurrentLatched = false;
+#endif
 
     if (steerEnable != prevSteerEnable) {
         debugf("Steer enable state changed: %s", steerEnable ? "enabled" : "disabled");

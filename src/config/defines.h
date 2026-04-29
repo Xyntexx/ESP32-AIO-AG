@@ -46,6 +46,20 @@
 #define KEYA_LISTEN_ONLY 0
 #endif
 
+// Overcurrent-based manual-override disengagement. When the smoothed motor
+// current crosses this threshold during an engaged session, autosteer
+// force-disengages and refuses to re-engage until AOG cycles guidanceStatus.
+// Mirrors the Teensy-Keya fork's PressureSensor / pulseCount override
+// pattern (Autosteer.ino sec 4.4) but uses the heartbeat current value
+// directly so no analog sensor is needed. 0 disables.
+//
+// 6000 mA is roughly 3-4x typical autosteer current, well below the motor's
+// 17A max - generous enough that normal hard turns don't false-trigger but
+// catches a wheel-grab before the supply undervoltage trips.
+#ifndef KEYA_OVERCURRENT_TRIP_MA
+#define KEYA_OVERCURRENT_TRIP_MA 6000
+#endif
+
 // Virtual WAS sourced from the Keya motor's encoder position. When 1, the
 // firmware skips ADS1115WAS and registers a shim that reads cumulative
 // degrees from the Keya heartbeat. Useful when there is no physical wheel-
