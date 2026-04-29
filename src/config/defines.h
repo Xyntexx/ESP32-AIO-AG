@@ -37,6 +37,15 @@
 #define KEYA_SNIFFER 0
 #endif
 
+// Listen-only mode. When set, KeyaMotor never transmits (no speed, no
+// enable, no disable, no keep-alive). Pair with KEYA_SNIFFER=1 so the
+// firmware silently observes whatever another master on the bus does -
+// no risk of our own ACKs cluttering the log or the motor reacting to
+// our commands. Autosteer still computes PWM but it goes nowhere.
+#ifndef KEYA_LISTEN_ONLY
+#define KEYA_LISTEN_ONLY 0
+#endif
+
 // Virtual WAS sourced from the Keya motor's encoder position. When 1, the
 // firmware skips ADS1115WAS and registers a shim that reads cumulative
 // degrees from the Keya heartbeat. Useful when there is no physical wheel-

@@ -70,6 +70,9 @@ static void buildBaseFrame(twai_message_t& msg) {
 }
 
 static void sendEnable() {
+#if KEYA_LISTEN_ONLY
+    return;
+#else
     twai_message_t m;
     buildBaseFrame(m);
     m.data[0] = 0x23;
@@ -77,9 +80,13 @@ static void sendEnable() {
     m.data[2] = 0x20;
     m.data[3] = 0x01;
     hw::can::send(m);
+#endif
 }
 
 static void sendDisable() {
+#if KEYA_LISTEN_ONLY
+    return;
+#else
     twai_message_t m;
     buildBaseFrame(m);
     m.data[0] = 0x23;
@@ -87,9 +94,14 @@ static void sendDisable() {
     m.data[2] = 0x20;
     m.data[3] = 0x01;
     hw::can::send(m);
+#endif
 }
 
 static void sendSpeed(int16_t signedSpeed) {
+#if KEYA_LISTEN_ONLY
+    (void)signedSpeed;
+    return;
+#else
     twai_message_t m;
     buildBaseFrame(m);
     m.data[0] = 0x23;
@@ -106,6 +118,7 @@ static void sendSpeed(int16_t signedSpeed) {
         m.data[7] = 0x00;
     }
     hw::can::send(m);
+#endif
 }
 
 bool KeyaMotor::init() {
@@ -128,7 +141,11 @@ bool KeyaMotor::init() {
     motor::init(interface);
 
     initialized = true;
+#if KEYA_LISTEN_ONLY
+    info("KeyaMotor initialized (LISTEN-ONLY: no CAN tx will be issued)");
+#else
     info("KeyaMotor initialized");
+#endif
     return true;
 }
 
