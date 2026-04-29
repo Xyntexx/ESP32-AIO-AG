@@ -27,6 +27,17 @@ void handler() {
 
     if (steerEnable != prevSteerEnable) {
         debugf("Steer enable state changed: %s", steerEnable ? "enabled" : "disabled");
+#if KEYA_MOTOR
+        if (steerEnable) {
+            // Engaging - start a fresh peak window so we can see the
+            // worst-case current during just this engaged session.
+            hw::KeyaMotor::resetPeakCurrent();
+        } else {
+            // Disengaging - report what the motor pulled at its worst.
+            infof("Keya: peak current during engage = %u mA",
+                  hw::KeyaMotor::getPeakCurrentMA());
+        }
+#endif
         prevSteerEnable = steerEnable;
     }
 

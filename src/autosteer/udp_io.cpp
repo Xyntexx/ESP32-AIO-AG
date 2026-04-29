@@ -9,6 +9,9 @@
 #include "motor.h"
 #include "settings.h"
 #include "utils/log.h"
+#if KEYA_MOTOR
+#include "hardware/motor/keya_motor.h"
+#endif
 
 // Global variables
 uint32_t lastDataReceived                  = 0;
@@ -350,7 +353,19 @@ void sendSteerData() {
     bool steer_switch = buttons::steerBntEnabled();
     bool work_switch = buttons::workBntEnabled();
     uint8_t pwmDisplay = motor::getCurrentPWM();
+
+    // FROM_AUTOSTEER2 byte 5 ("sensorValue" / AOG mc.sensorData). On Keya
+    // builds, fill it with the live motor current scaled to 0.1 A per unit
+    // (0..255 = 0..25.5 A), which covers the KY173 17 A peak with headroom.
+    // On non-Keya builds, fall back to the raw WAS reading like upstream
+    // AOG firmware (used for WAS calibration views in some forks).
+#if KEYA_MOTOR
+    uint16_t curMA = hw::KeyaMotor::getCurrentMA();
+    uint16_t deciAmps = (curMA + 50) / 100; // round-half-up to 0.1 A
+    uint8_t sensorValue = (deciAmps > 255) ? 255 : (uint8_t)deciAmps;
+#else
     uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
+#endif
 
     debugf("Sending response: A=%.2f, R=%d, H=%.1f, R=%.1f, S=%d, pwm=%d",
            actualSteerAngle, was::get_raw_steering_position(), heading, roll, steer_switch, pwmDisplay);

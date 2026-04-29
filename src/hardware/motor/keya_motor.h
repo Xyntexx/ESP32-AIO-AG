@@ -28,6 +28,11 @@ public:
     // reference: bytes 4-5 of heartbeat). Returns 0 if no heartbeat yet.
     static uint16_t getCurrentMA();
 
+    // Peak current observed since the last call to resetPeakCurrent().
+    // Updated continuously from heartbeat parsing.
+    static uint16_t getPeakCurrentMA();
+    static void     resetPeakCurrent();
+
     // Cumulative encoder position in signed degrees from boot position. The
     // first heartbeat after boot snapshots the raw encoder value as the zero
     // reference; subsequent heartbeats unwrap deltas and accumulate. Returns

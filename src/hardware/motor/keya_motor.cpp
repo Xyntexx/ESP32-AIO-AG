@@ -50,6 +50,7 @@ static volatile bool     healthyFlag    = false;
 static volatile uint32_t lastSeenMs     = 0;
 static volatile uint16_t lastErrorCode  = 0;
 static volatile uint16_t lastCurrentMA  = 0;
+static volatile uint16_t peakCurrentMA  = 0;
 
 // Cumulative encoder position. The Keya heartbeat reports a uint16 angle
 // counter that wraps at 0xFFFF (one count per degree, per manual sec 4.5.2).
@@ -304,6 +305,7 @@ void KeyaMotor::handler() {
 
         lastErrorCode = errCode;
         lastCurrentMA = curMA;
+        if (curMA > peakCurrentMA) peakCurrentMA = curMA;
         lastSeenMs    = millis();
         // Mask out non-fault state bits (Disable, CAN break) - those are
         // expected operating states, not motor faults.
@@ -336,6 +338,14 @@ bool KeyaMotor::isHealthy() {
 
 uint16_t KeyaMotor::getCurrentMA() {
     return lastCurrentMA;
+}
+
+uint16_t KeyaMotor::getPeakCurrentMA() {
+    return peakCurrentMA;
+}
+
+void KeyaMotor::resetPeakCurrent() {
+    peakCurrentMA = 0;
 }
 
 int32_t KeyaMotor::getCumulativeDegrees() {
