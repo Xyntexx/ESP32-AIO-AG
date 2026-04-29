@@ -28,6 +28,16 @@ public:
     // reference: bytes 4-5 of heartbeat). Returns 0 if no heartbeat yet.
     static uint16_t getCurrentMA();
 
+    // Cumulative encoder position in signed degrees from boot position. The
+    // first heartbeat after boot snapshots the raw encoder value as the zero
+    // reference; subsequent heartbeats unwrap deltas and accumulate. Returns
+    // 0 until the first heartbeat. Used by the KeyaWAS virtual WAS shim.
+    static int32_t getCumulativeDegrees();
+
+    // True once at least one heartbeat has been processed - the cumulative
+    // position is meaningful only after this is true.
+    static bool hasPositionRef();
+
 private:
     static bool initialized;
     static uint8_t currentPwm;

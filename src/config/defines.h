@@ -28,6 +28,26 @@
 #define KEYA_NO_ACK 0
 #endif
 
+// Virtual WAS sourced from the Keya motor's encoder position. When 1, the
+// firmware skips ADS1115WAS and registers a shim that reads cumulative
+// degrees from the Keya heartbeat. Useful when there is no physical wheel-
+// angle sensor wired but a Keya motor is mechanically coupled to the
+// steering shaft. Requires KEYA_MOTOR=1.
+#ifndef KEYA_WAS
+#define KEYA_WAS 0
+#endif
+
+// Total mechanical range of the steering shaft in degrees (lock-to-lock).
+// The KeyaWAS shim clamps the cumulative reading to +-(KEYA_WAS_RANGE_DEG/2)
+// so a runaway encoder cannot blow up downstream math. 900 = +-450 deg.
+#define KEYA_WAS_RANGE_DEG 900
+
+// Counts per degree reported by the KeyaWAS shim. The Keya heartbeat is 1
+// LSB per degree, so 1 count/deg preserves resolution exactly. The user
+// must set the firmware Settings::steerSensorCounts to match this so
+// was::get_steering_angle() returns degrees correctly.
+#define KEYA_WAS_COUNTS_PER_DEG 1
+
 // Bench simulator: kinematic bicycle model that consumes the real WAS reading
 // and synthesizes GPS NMEA + IMU heading. Lets the device run end-to-end
 // indoors with no satellites and a stationary IMU. 0 = real sensors, 1 = sim.

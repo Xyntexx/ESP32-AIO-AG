@@ -166,22 +166,28 @@ void emitNMEA() {
     char body[160];
     int n;
 
-    // GGA: time, lat, lon, fix=1 (GPS), sats=12, hdop=0.9, alt, geoid sep
+    // GGA: time, lat, lon, fix quality=4 (RTK fixed), sats=14, hdop=0.6,
+    // alt, geoid separation. AgOpenGPS gates engagement on a "good" fix and
+    // typically requires quality >= 4 (RTK fixed) or 5 (RTK float).
     n = snprintf(body, sizeof(body),
-                 "GNGGA,%s,%s,%c,%s,%c,1,12,0.9,100.0,M,46.9,M,,",
+                 "GNGGA,%s,%s,%c,%s,%c,4,14,0.6,100.0,M,46.9,M,1.0,0000",
                  timeBuf, latBuf, nsHemi, lonBuf, ewHemi);
     if (n > 0 && n < (int)sizeof(body)) sendSentence(body, n);
 
-    // RMC: time, status=A (valid), lat, lon, speed (knots), course, date
+    // RMC: time, status=A (valid), lat, lon, speed (knots), course, date,
+    // mag var (empty), mode=R (RTK). RMC mode-indicator field is the last
+    // value before the checksum and corresponds to the GGA fix quality:
+    //   A=autonomous, D=DGPS, F=RTK float, R=RTK fixed, E=estimated, N=invalid.
     n = snprintf(body, sizeof(body),
-                 "GNRMC,%s,A,%s,%c,%s,%c,%.2f,%.2f,%s,,,A",
+                 "GNRMC,%s,A,%s,%c,%s,%c,%.2f,%.2f,%s,,,R",
                  timeBuf, latBuf, nsHemi, lonBuf, ewHemi,
                  (double)speedKnots, (double)headingDeg, dateBuf);
     if (n > 0 && n < (int)sizeof(body)) sendSentence(body, n);
 
-    // VTG: course true, course magnetic, speed knots, speed km/h, mode A
+    // VTG: course true, course magnetic, speed knots, speed km/h, mode=R
+    // (RTK fixed) to match GGA quality=4.
     n = snprintf(body, sizeof(body),
-                 "GNVTG,%.2f,T,%.2f,M,%.2f,N,%.2f,K,A",
+                 "GNVTG,%.2f,T,%.2f,M,%.2f,N,%.2f,K,R",
                  (double)headingDeg, (double)headingDeg,
                  (double)speedKnots, (double)speedKmh);
     if (n > 0 && n < (int)sizeof(body)) sendSentence(body, n);

@@ -50,6 +50,16 @@ static volatile uint32_t lastSeenMs     = 0;
 static volatile uint16_t lastErrorCode  = 0;
 static volatile uint16_t lastCurrentMA  = 0;
 
+// Cumulative encoder position. The Keya heartbeat reports a uint16 angle
+// counter that wraps at 0xFFFF (one count per degree, per manual sec 4.5.2).
+// On the first heartbeat we snapshot the raw value; thereafter we compute a
+// signed 16-bit delta from the previous reading - that delta wraps correctly
+// for small per-tick motions (typically <<1 deg per 20ms heartbeat) - and
+// accumulate into a 32-bit signed running total in degrees from boot zero.
+static volatile bool     posRefValid    = false;
+static volatile uint16_t lastRawAngle   = 0;
+static volatile int32_t  cumulativeDeg  = 0;
+
 static void buildBaseFrame(twai_message_t& msg) {
     memset(&msg, 0, sizeof(msg));
     msg.identifier = KEYA_TX_ID;
@@ -123,18 +133,22 @@ bool KeyaMotor::init() {
 void KeyaMotor::drive(uint8_t pwm, bool reversed) {
     if (!initialized) return;
 
-    if (pwm == 0) {
+    if (!isHealthy()) {
+        // Keya heartbeat missing or in fault. Don't drive blind - the user-
+        // facing engage gate (autosteer.cpp) refuses engagement on unhealthy,
+        // but a stale heartbeat between checks would still get here.
         sendDisable();
         currentPwm = 0;
         return;
     }
 
-    if (!isHealthy()) {
-        // Keya heartbeat missing or in fault. Don't drive blind - the user-
-        // facing engage gate (autosteer.cpp) refuses engagement on unhealthy,
-        // but a stale heartbeat between checks would still get here. Log
-        // throttled via the `error counter above warn` path in can_manager.
-        sendDisable();
+    if (pwm == 0) {
+        // Zero error from PID. Hold position rather than coast: keep the
+        // motor enabled with speed=0 so its closed-loop speed control
+        // actively resists external rotation. Disabling here would let
+        // the wheel drift off the setpoint until the next non-zero error.
+        sendSpeed(0);
+        sendEnable();
         currentPwm = 0;
         return;
     }
@@ -197,6 +211,22 @@ void KeyaMotor::handler() {
             curMA = msg.data[5] * 20;
         }
 
+        // Cumulative angle (Data0 high, Data1 low; 1 LSB = 1 deg, wraps at
+        // 0xFFFF per manual sec 4.5.2). On the first frame, snapshot the
+        // raw value as the zero reference; afterwards, compute the signed
+        // 16-bit delta and accumulate. uint16 subtraction wraps correctly
+        // for small per-tick motions.
+        uint16_t rawAngle = ((uint16_t)msg.data[0] << 8) | msg.data[1];
+        if (!posRefValid) {
+            lastRawAngle = rawAngle;
+            cumulativeDeg = 0;
+            posRefValid = true;
+        } else {
+            int16_t delta = (int16_t)(rawAngle - lastRawAngle);
+            cumulativeDeg += delta;
+            lastRawAngle = rawAngle;
+        }
+
         if (!everSeen) {
             infof("Keya: first heartbeat received (current=%umA, errCode=0x%04X)",
                   curMA, errCode);
@@ -245,6 +275,14 @@ bool KeyaMotor::isHealthy() {
 
 uint16_t KeyaMotor::getCurrentMA() {
     return lastCurrentMA;
+}
+
+int32_t KeyaMotor::getCumulativeDegrees() {
+    return cumulativeDeg;
+}
+
+bool KeyaMotor::hasPositionRef() {
+    return posRefValid;
 }
 
 } // namespace hw

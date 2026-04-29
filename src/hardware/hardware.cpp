@@ -3,7 +3,11 @@
 #include "config/defines.h"
 #include "i2c_manager.h"
 #include "imu/bno08x_imu.h"
+#if KEYA_WAS
+#include "was/keya_was.h"
+#else
 #include "was/ads1115_was.h"
+#endif
 #if KEYA_MOTOR
 #include "motor/keya_motor.h"
 #else
@@ -49,21 +53,35 @@ bool init(){
 #endif
     }
 
-    if (!ADS1115WAS::init()) {
-        error("ADS1115 WAS initialization failed");
-        return false;
-    }
-
-#if KEYA_MOTOR
+#if KEYA_WAS
+    // KeyaMotor must come up before KeyaWAS so the heartbeat parser has
+    // somewhere to write the cumulative position. Init order:
+    //   1. KeyaMotor (CAN driver + heartbeat parser, registers MotorInterface)
+    //   2. KeyaWAS   (registers WASInterface, reads from KeyaMotor)
     if (!KeyaMotor::init()) {
         error("Keya Motor initialization failed");
         return false;
     }
+    if (!KeyaWAS::init()) {
+        error("Keya WAS initialization failed");
+        return false;
+    }
 #else
+    if (!ADS1115WAS::init()) {
+        error("ADS1115 WAS initialization failed");
+        return false;
+    }
+  #if KEYA_MOTOR
+    if (!KeyaMotor::init()) {
+        error("Keya Motor initialization failed");
+        return false;
+    }
+  #else
     if (!PWMMotor::init()) {
         error("PWM Motor initialization failed");
         return false;
     }
+  #endif
 #endif
 
 #if SIMULATOR

@@ -207,12 +207,28 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 
                 // Extract and convert values
                 gpsSpeed           = static_cast<float>(steerData->speed) * 0.1f;
-                guidanceStatus     = steerData->status & 0x01;
+                uint8_t newGuidanceStatus = steerData->status & 0x01;
 
                 // Decode steering angle (int16_t encoded as uint16_t * scale factor)
                 // Protocol encodes angles as int16 * 100
                 int16_t raw_angle = static_cast<int16_t>(steerData->steerAngle);
-                steerAngleSetPoint = static_cast<float>(raw_angle) * ANGLE_SCALE_FACTOR;
+                float newSetpoint = static_cast<float>(raw_angle) * ANGLE_SCALE_FACTOR;
+
+                // Log transitions of guidanceStatus and "significant" setpoint
+                // changes (>0.1 deg) so we can see what AOG is asking for
+                // without spamming the debug stream every 100ms.
+                if (newGuidanceStatus != guidanceStatus) {
+                    infof("AOG: guidanceStatus -> %u (setpoint=%.2f deg)",
+                          (unsigned)newGuidanceStatus, (double)newSetpoint);
+                }
+                if (fabsf(newSetpoint - steerAngleSetPoint) > 0.1f) {
+                    debugf("AOG: setpoint=%.2f deg (status=%u, speed=%.1f)",
+                           (double)newSetpoint, (unsigned)newGuidanceStatus,
+                           (double)gpsSpeed);
+                }
+
+                guidanceStatus     = newGuidanceStatus;
+                steerAngleSetPoint = newSetpoint;
 
                 // Validate angle is within expected range
                 if (steerAngleSetPoint < MIN_STEER_ANGLE_DEG || steerAngleSetPoint > MAX_STEER_ANGLE_DEG) {
