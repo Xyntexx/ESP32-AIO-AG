@@ -21,6 +21,27 @@ static constexpr uint32_t KEYA_STALE_MS = 200;
 static constexpr int16_t KEYA_SPEED_MAX = 998;
 static constexpr int16_t KEYA_SPEED_MIN = -995;
 
+// Heartbeat error-code bit decode (per KY173 datasheet, sec 4.5.2).
+// errCode is built as (Data6 << 8) | Data7.
+// Data6 bits: 6=CAN break, 5=232 break, 4=current sensing, 3=Hall failure,
+//             2=temp protection, 0=working mode failure.
+// Data7 bits: 7=control signal, 6=overcurrent, 4=undervoltage, 3=E2PROM,
+//             2=hardware protection, 1=overvoltage, 0=Disable.
+//
+// Bits we treat as STATE rather than fault:
+//   - Data7 bit0 (0x0001 "Disable"): the motor truthfully reports it is
+//     disabled. We send disable at init and on stop - that's expected.
+//   - Data6 bit6 (0x4000 "CAN break"): means the motor has not seen a CAN
+//     command for ~1s. Cleared by our keep-alive disable frame, so it
+//     should rarely persist.
+// Anything else is a real fault and blocks engagement.
+static constexpr uint16_t KEYA_NONFAULT_MASK = 0x4001;
+static constexpr uint16_t KEYA_FAULT_MASK    = ~KEYA_NONFAULT_MASK;
+
+// Keep-alive cadence. Keya watchdog fires after 1000ms of CAN silence;
+// 200ms gives us a healthy margin.
+static constexpr uint32_t KEYA_KEEPALIVE_MS = 200;
+
 bool KeyaMotor::initialized = false;
 uint8_t KeyaMotor::currentPwm = 0;
 
@@ -143,6 +164,18 @@ void KeyaMotor::handler() {
     static bool everSeen      = false;
     static bool prevHealthy   = false;
     static uint16_t prevError = 0;
+    static uint32_t lastKeepaliveMs = 0;
+
+    // Keep-alive: the motor's own watchdog (datasheet sec 4.5.1) trips after
+    // 1s of CAN silence, raising the "CAN break" bit in the heartbeat error
+    // code. Send a disable frame periodically when nothing else is being
+    // sent so the motor stays in a clean disabled-but-connected state.
+    if (millis() - lastKeepaliveMs > KEYA_KEEPALIVE_MS) {
+        if (currentPwm == 0) {
+            sendDisable();
+        }
+        lastKeepaliveMs = millis();
+    }
 
     twai_message_t msg;
     while (hw::can::receive(msg, pdMS_TO_TICKS(50))) {
@@ -181,7 +214,9 @@ void KeyaMotor::handler() {
         lastErrorCode = errCode;
         lastCurrentMA = curMA;
         lastSeenMs    = millis();
-        healthyFlag   = (errCode == 0);
+        // Mask out non-fault state bits (Disable, CAN break) - those are
+        // expected operating states, not motor faults.
+        healthyFlag   = ((errCode & KEYA_FAULT_MASK) == 0);
     }
 
     // Staleness check - mark unhealthy if no heartbeat for KEYA_STALE_MS.
