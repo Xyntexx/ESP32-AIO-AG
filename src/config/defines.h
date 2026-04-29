@@ -1,6 +1,20 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+// Hardware test mode. When 1:
+//  - hw::init() does not halt on missing peripherals; failures become
+//    warnings so the firmware boots with whatever subset of hardware is
+//    physically present (useful for validating IMU, GPS, WAS, motor
+//    independently without needing the rest plugged in).
+//  - A test task logs the live state of every subsystem at 1 Hz on the
+//    UDP debug stream so the user can see at a glance which one is
+//    responding.
+//  - Autosteer remains running but the motor will no-op cleanly if its
+//    init failed.
+#ifndef TEST_MODE
+#define TEST_MODE 0
+#endif
+
 #define FIRMWARE_VERSION "0.0.1"
 #define BUILD_DATE __DATE__ " " __TIME__
 

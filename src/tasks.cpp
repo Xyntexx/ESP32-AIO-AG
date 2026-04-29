@@ -12,6 +12,9 @@
 #if SIMULATOR
 #include "sim/bicycle_sim.h"
 #endif
+#if TEST_MODE
+#include "test/hw_test.h"
+#endif
 #include "utils/log.h"
 
 [[noreturn]] void was_task(void *pv_parameters) {
@@ -217,6 +220,24 @@ bool create_tasks() {
     );
     if (taskCreated != pdPASS || keyaTaskHandle == nullptr) {
         error("Failed to create Keya task");
+        return false;
+    }
+#endif
+
+#if TEST_MODE
+    delay(100);
+    debug("Creating HW test task...");
+    TaskHandle_t testTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        hw::test::task,
+        "hw_test",
+        4096,
+        nullptr,
+        2,                  // low priority - it's just a logger
+        &testTaskHandle
+    );
+    if (taskCreated != pdPASS || testTaskHandle == nullptr) {
+        error("Failed to create HW test task");
         return false;
     }
 #endif

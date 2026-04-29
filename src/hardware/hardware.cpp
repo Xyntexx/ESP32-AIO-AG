@@ -24,85 +24,65 @@
 
 namespace hw{
 
+// Subsystem-presence tracker, populated by init(). Used by the test task
+// (under TEST_MODE) and other code that wants to know whether a peripheral
+// came up so it can adapt its behaviour.
+TestStatus testStatus;
+
+// Helper: in TEST_MODE turn an init failure into a warning + continue.
+// Outside TEST_MODE the original "halt on first failure" semantics hold.
+#if TEST_MODE
+  #define INIT_OR_HALT(call, name)                                          \
+      do {                                                                  \
+          if (!(call)) {                                                    \
+              warningf("TEST_MODE: %s init failed - continuing", #name);    \
+          } else { testStatus.name##_ok = true; }                           \
+      } while (0)
+#else
+  #define INIT_OR_HALT(call, name)                                          \
+      do {                                                                  \
+          if (!(call)) {                                                    \
+              errorf("%s initialization failed", #name);                    \
+              return false;                                                 \
+          }                                                                 \
+          testStatus.name##_ok = true;                                      \
+      } while (0)
+#endif
+
 bool init(){
-    if (!initI2CManager()) {
-        error("FATAL: I2C Manager initialization failed");
-        return false;
-    }
-
-    if (!Settings::init()) {
-        error("Settings initialization failed");
-        return false;
-    }
-
-    if (!Buttons::init()) {
-        error("Buttons initialization failed");
-        return false;
-    }
+    INIT_OR_HALT(initI2CManager(),    i2c);
+    INIT_OR_HALT(Settings::init(),    settings);
+    INIT_OR_HALT(Buttons::init(),     buttons);
 
     // Init BNO first since it uses I2C. In SIMULATOR mode the BNO08x is
     // optional - the sim will register its own heading provider after this
-    // runs. We still try to bring up the chip so its data path is available
-    // for verification, but a missing sensor is non-fatal.
-    if (!BNO08XIMU::init()) {
+    // runs.
 #if SIMULATOR
+    if (!BNO08XIMU::init()) {
         warning("SIMULATOR: BNO08X init failed - continuing, sim provides heading");
+    } else { testStatus.imu_ok = true; }
 #else
-        error("BNO08X IMU initialization failed");
-        return false;
+    INIT_OR_HALT(BNO08XIMU::init(),   imu);
 #endif
-    }
 
 #if KEYA_WAS
-    // KeyaMotor must come up before KeyaWAS so the heartbeat parser has
-    // somewhere to write the cumulative position. Init order:
-    //   1. KeyaMotor (CAN driver + heartbeat parser, registers MotorInterface)
-    //   2. KeyaWAS   (registers WASInterface, reads from KeyaMotor)
-    if (!KeyaMotor::init()) {
-        error("Keya Motor initialization failed");
-        return false;
-    }
-    if (!KeyaWAS::init()) {
-        error("Keya WAS initialization failed");
-        return false;
-    }
+    INIT_OR_HALT(KeyaMotor::init(),   motor);
+    INIT_OR_HALT(KeyaWAS::init(),     was);
 #else
-    if (!ADS1115WAS::init()) {
-        error("ADS1115 WAS initialization failed");
-        return false;
-    }
+    INIT_OR_HALT(ADS1115WAS::init(),  was);
   #if KEYA_MOTOR
-    if (!KeyaMotor::init()) {
-        error("Keya Motor initialization failed");
-        return false;
-    }
+    INIT_OR_HALT(KeyaMotor::init(),   motor);
   #else
-    if (!PWMMotor::init()) {
-        error("PWM Motor initialization failed");
-        return false;
-    }
+    INIT_OR_HALT(PWMMotor::init(),    motor);
   #endif
 #endif
 
 #if SIMULATOR
-    // In sim mode the real GPS UART is skipped entirely - the simulator emits
-    // NMEA directly to UDP. This also means the device works on the bench
-    // with no u-blox attached or no satellite fix.
-    if (!sim::init()) {
-        error("Simulator initialization failed");
-        return false;
-    }
+    INIT_OR_HALT(sim::init(),         gps);
 #else
-    if (!gps_main::init()) {
-        error("Main GPS initialization failed");
-        return false;
-    }
-
+    INIT_OR_HALT(gps_main::init(),    gps);
   #if GPS_HEADING
-    if (!gps_heading::init()) {
-        error("GPS Heading initialization failed");
-        return false;
-    }
+    INIT_OR_HALT(gps_heading::init(), gpsHeading);
   #else
     debug("GPS heading disabled (single-GPS build)");
   #endif
