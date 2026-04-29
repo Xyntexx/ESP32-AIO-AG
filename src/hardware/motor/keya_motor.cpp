@@ -140,6 +140,10 @@ uint8_t KeyaMotor::getPwm() {
 void KeyaMotor::handler() {
     if (!initialized) return;
 
+    static bool everSeen      = false;
+    static bool prevHealthy   = false;
+    static uint16_t prevError = 0;
+
     twai_message_t msg;
     while (hw::can::receive(msg, pdMS_TO_TICKS(50))) {
         if (msg.identifier != KEYA_HEARTBEAT_ID) continue;
@@ -160,6 +164,20 @@ void KeyaMotor::handler() {
             curMA = msg.data[5] * 20;
         }
 
+        if (!everSeen) {
+            infof("Keya: first heartbeat received (current=%umA, errCode=0x%04X)",
+                  curMA, errCode);
+            everSeen = true;
+        }
+        if (errCode != prevError) {
+            if (errCode == 0) {
+                info("Keya: error cleared");
+            } else {
+                errorf("Keya: error code 0x%04X", errCode);
+            }
+            prevError = errCode;
+        }
+
         lastErrorCode = errCode;
         lastCurrentMA = curMA;
         lastSeenMs    = millis();
@@ -169,6 +187,17 @@ void KeyaMotor::handler() {
     // Staleness check - mark unhealthy if no heartbeat for KEYA_STALE_MS.
     if (healthyFlag && (millis() - lastSeenMs) > KEYA_STALE_MS) {
         healthyFlag = false;
+    }
+
+    // Transition logging so the operator sees health flips on the debug stream.
+    bool curHealthy = healthyFlag;
+    if (curHealthy != prevHealthy) {
+        if (curHealthy) {
+            info("Keya: healthy");
+        } else {
+            error("Keya: unhealthy (heartbeat stale or fault)");
+        }
+        prevHealthy = curHealthy;
     }
 }
 
