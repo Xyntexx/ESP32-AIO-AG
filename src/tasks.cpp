@@ -9,6 +9,9 @@
 #if KEYA_MOTOR
 #include "hardware/motor/keya_motor.h"
 #endif
+#if SIMULATOR
+#include "sim/bicycle_sim.h"
+#endif
 #include "utils/log.h"
 
 [[noreturn]] void was_task(void *pv_parameters) {
@@ -60,6 +63,21 @@
         // handler() blocks up to ~50ms inside twai_receive when idle, so a
         // short delay here is enough to yield without losing heartbeats.
         vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+#endif
+
+#if SIMULATOR
+[[noreturn]] void sim_task(void *pv_parameters) {
+    TickType_t lastWake = xTaskGetTickCount();
+    int nmeaCounter = 0;
+    for (;;) {
+        sim::tick();
+        if (++nmeaCounter >= SIM_NMEA_DIVIDER) {
+            nmeaCounter = 0;
+            sim::emitNMEA();
+        }
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(SIM_TICK_MS));
     }
 }
 #endif
@@ -133,6 +151,23 @@ bool create_tasks() {
         return false;
     }
 
+#if SIMULATOR
+    delay(100);
+    debug("Creating SIM task...");
+    TaskHandle_t simTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        sim_task,
+        "sim_task",
+        4096,
+        nullptr,
+        SIM_TASK_PRIORITY,
+        &simTaskHandle
+    );
+    if (taskCreated != pdPASS || simTaskHandle == nullptr) {
+        error("Failed to create SIM task");
+        return false;
+    }
+#else
     delay(100);
     debug("Creating MAIN_GPS task...");
     TaskHandle_t gpsTaskHandle = nullptr;
@@ -148,6 +183,7 @@ bool create_tasks() {
         error("Failed to create GPS task");
         return false;
     }
+#endif
 #if GPS_HEADING
     delay(100);
     debug("Creating HEADING_GPS task...");

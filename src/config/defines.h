@@ -28,6 +28,19 @@
 #define KEYA_NO_ACK 0
 #endif
 
+// Bench simulator: kinematic bicycle model that consumes the real WAS reading
+// and synthesizes GPS NMEA + IMU heading. Lets the device run end-to-end
+// indoors with no satellites and a stationary IMU. 0 = real sensors, 1 = sim.
+#ifndef SIMULATOR
+#define SIMULATOR 0
+#endif
+#define SIM_WHEELBASE_M   2.5f
+#define SIM_SPEED_MPS     1.5f
+#define SIM_INIT_LAT      60.50000
+#define SIM_INIT_LON      22.50000
+#define SIM_TICK_MS       10
+#define SIM_NMEA_DIVIDER  10
+
 #define STATIC_IP_ADDR {192, 168, 178, 126}
 #define STATIC_GW_ADDR {192, 168, 178, 1}
 #define STATIC_SN_ADDR {255, 255, 255, 0}
@@ -53,6 +66,7 @@
 #define GPS_TASK_PRIORITY (10)
 #define HEADING_TASK_PRIORITY (10)
 #define KEYA_TASK_PRIORITY 3
+#define SIM_TASK_PRIORITY  4
 
 
 #define AgOpenGPS_UDP_PORT 9999
