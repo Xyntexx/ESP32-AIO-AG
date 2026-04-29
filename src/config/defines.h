@@ -38,15 +38,21 @@
 #endif
 
 // Total mechanical range of the steering shaft in degrees (lock-to-lock).
-// The KeyaWAS shim clamps the cumulative reading to +-(KEYA_WAS_RANGE_DEG/2)
-// so a runaway encoder cannot blow up downstream math. 900 = +-450 deg.
+// 900 means the encoder can rotate +-450 deg from the boot position.
 #define KEYA_WAS_RANGE_DEG 900
 
-// Counts per degree reported by the KeyaWAS shim. The Keya heartbeat is 1
-// LSB per degree, so 1 count/deg preserves resolution exactly. The user
-// must set the firmware Settings::steerSensorCounts to match this so
-// was::get_steering_angle() returns degrees correctly.
-#define KEYA_WAS_COUNTS_PER_DEG 1
+// Half-range of the synthesized WAS *output* angle in degrees - i.e. the
+// peak wheel-angle equivalent at full lock. With KEYA_WAS_RANGE_DEG=900
+// (encoder +-450 deg) and KEYA_WAS_OUT_HALF_DEG=45, full lock encoder
+// rotation maps to +-45 deg of reported wheel angle (a 10:1 reduction
+// from steering shaft to wheel - typical for a small tractor with a
+// reasonable Pitman arm).
+#define KEYA_WAS_OUT_HALF_DEG 45
+
+// Raw counts per degree of WAS output. The was.cpp pipeline divides the
+// raw int16 by Settings.steerSensorCounts to get degrees, so this value
+// must match steerSensorCounts on the AOG side (default 100).
+#define KEYA_WAS_COUNTS_PER_OUT_DEG 100
 
 // Bench simulator: kinematic bicycle model that consumes the real WAS reading
 // and synthesizes GPS NMEA + IMU heading. Lets the device run end-to-end
