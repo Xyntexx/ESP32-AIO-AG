@@ -9,8 +9,9 @@
 namespace hw {
 
 // Keya CAN protocol constants (see memory/keya_teensy_reference.md)
-static constexpr uint32_t KEYA_TX_ID        = 0x06000001; // outgoing commands
-static constexpr uint32_t KEYA_HEARTBEAT_ID = 0x07000001; // incoming heartbeat
+static constexpr uint32_t KEYA_TX_ID         = 0x06000001; // outgoing commands
+static constexpr uint32_t KEYA_HEARTBEAT_ID  = 0x07000001; // incoming heartbeat
+static constexpr uint32_t KEYA_SDO_RESP_ID   = 0x05800001; // SDO-server response
 
 // Heartbeat staleness watchdog. Default cadence is 20ms, so 200ms is 10
 // missed frames. Anything older than this marks the motor unhealthy.
@@ -193,6 +194,66 @@ void KeyaMotor::handler() {
 
     twai_message_t msg;
     while (hw::can::receive(msg, pdMS_TO_TICKS(50))) {
+#if KEYA_SNIFFER
+        // Sniffer: log "interesting" non-routine frames so the user can
+        // reverse-engineer proprietary commands by running another master
+        // (Keya ServoCAN tool) on the same bus. Filter out:
+        //   - Heartbeats (own steady-state, parsed below).
+        //   - SDO write-ACKs to OUR own commands (scs=0x60 + idx in
+        //     {0x2000:00 = speed-ack, 0x200C:00 = disable-ack,
+        //                                 0x200D:00 = enable-ack}).
+        // What's left: any frame from the tool, plus any motor response
+        // we did not initiate.
+        bool isHeartbeat = (msg.identifier == KEYA_HEARTBEAT_ID);
+        bool isOurAck = (msg.identifier == KEYA_SDO_RESP_ID
+                         && msg.data_length_code == 8
+                         && msg.data[0] == 0x60
+                         && msg.data[2] == 0x20
+                         && msg.data[3] == 0x00
+                         && (msg.data[1] == 0x00 || msg.data[1] == 0x0C
+                                                  || msg.data[1] == 0x0D));
+        if (!isHeartbeat && !isOurAck) {
+            debugf("CAN rx id=0x%08X dlc=%u %02X %02X %02X %02X %02X %02X %02X %02X",
+                   msg.identifier, (unsigned)msg.data_length_code,
+                   msg.data[0], msg.data[1], msg.data[2], msg.data[3],
+                   msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
+        }
+#endif
+
+        // SDO responses (read/write replies) arrive on a different COB-ID
+        // than heartbeats. Decode and log them on the debug stream so any
+        // SDO-read utility yields visible data.
+        if (msg.identifier == KEYA_SDO_RESP_ID && msg.data_length_code >= 8) {
+            uint8_t  scs = msg.data[0];
+            uint16_t idx = (uint16_t)msg.data[1] | ((uint16_t)msg.data[2] << 8);
+            uint8_t  sub = msg.data[3];
+            uint32_t data = (uint32_t)msg.data[4]
+                          | ((uint32_t)msg.data[5] << 8)
+                          | ((uint32_t)msg.data[6] << 16)
+                          | ((uint32_t)msg.data[7] << 24);
+            if (scs == 0x80) {
+                // Abort transfer - object/subindex doesn't exist or is denied.
+                debugf("Keya SDO abort idx=0x%04X sub=0x%02X code=0x%08X",
+                       idx, sub, data);
+            } else if ((scs & 0xE0) == 0x40) {
+                // Upload response (0x42=4-byte, 0x43..0x4F=expedited variants).
+                infof("Keya SDO read idx=0x%04X sub=0x%02X scs=0x%02X data=0x%08X (%d)",
+                      idx, sub, scs, data, (int)data);
+            } else {
+                // Quiet about routine write-ACKs (scs=0x60) for our own
+                // commands - those are the speed/disable/enable ACKs at
+                // 0x2000/0x200C/0x200D and just clutter the log.
+                bool routineAck = (scs == 0x60 && sub == 0x00
+                                   && (idx == 0x2000 || idx == 0x200C
+                                                     || idx == 0x200D));
+                if (!routineAck) {
+                    debugf("Keya SDO frame idx=0x%04X sub=0x%02X scs=0x%02X data=0x%08X",
+                           idx, sub, scs, data);
+                }
+            }
+            continue;
+        }
+
         if (msg.identifier != KEYA_HEARTBEAT_ID) continue;
         if (msg.data_length_code < 8) continue;
 
@@ -283,6 +344,54 @@ int32_t KeyaMotor::getCumulativeDegrees() {
 
 bool KeyaMotor::hasPositionRef() {
     return posRefValid;
+}
+
+bool KeyaMotor::sdoRead(uint16_t index, uint8_t subindex) {
+    twai_message_t m;
+    buildBaseFrame(m);
+    m.data[0] = 0x40;                       // SDO initiate upload (read)
+    m.data[1] = (uint8_t)(index & 0xFF);    // index low (CANopen LE)
+    m.data[2] = (uint8_t)(index >> 8);      // index high
+    m.data[3] = subindex;
+    // Bytes 4..7 are reserved/zero on an upload request.
+    return hw::can::send(m);
+}
+
+void KeyaMotor::probeMaxCurrent() {
+    info("Keya: probing OD for max-current parameter...");
+
+    // Confidence check first: the manual documents 0x2100:01 as "motor current
+    // query". If our SDO mechanism is correct we should see a response with
+    // the live current value. If this one is silent too, the issue is
+    // somewhere in our CAN plumbing rather than the OD addressing.
+    sdoRead(0x2100, 0x01);                  // KNOWN: live motor current
+    delay(40);
+    sdoRead(0x210F, 0x01);                  // KNOWN: motor temperature
+    delay(40);
+    sdoRead(0x210D, 0x02);                  // KNOWN: power supply voltage
+    delay(40);
+
+    // CANopen DSP402 motor-profile candidates.
+    sdoRead(0x6073, 0x00);                  // Max Current
+    delay(40);
+    sdoRead(0x6075, 0x00);                  // Motor Rated Current
+    delay(40);
+    sdoRead(0x6076, 0x00);                  // Motor Rated Torque
+    delay(40);
+
+    // Keya-specific guesses for configuration parameter 3 (Max current).
+    sdoRead(0x2003, 0x00);
+    delay(40);
+    sdoRead(0x2003, 0x01);
+    delay(40);
+    sdoRead(0x2103, 0x03);
+    delay(40);
+    sdoRead(0x210C, 0x03);
+    delay(40);
+    sdoRead(0x2200, 0x03);
+    delay(40);
+    sdoRead(0x2F03, 0x00);
+    delay(40);
 }
 
 } // namespace hw

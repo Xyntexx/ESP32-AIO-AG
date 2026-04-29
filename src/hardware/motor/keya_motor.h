@@ -38,6 +38,18 @@ public:
     // position is meaningful only after this is true.
     static bool hasPositionRef();
 
+    // Send a CANopen-style SDO upload (read) request to the motor controller.
+    // The response arrives on the standard SDO-server COB-ID and is decoded
+    // + logged in handler(). Non-destructive: only the controller's response
+    // is observed.
+    static bool sdoRead(uint16_t index, uint8_t subindex);
+
+    // One-shot probe that fires read requests at several plausible OD
+    // locations for parameter 0003 (Max current) since the manual does not
+    // explicitly document the SDO addressing for configuration parameters.
+    // Whatever the motor returns is logged on the debug stream.
+    static void probeMaxCurrent();
+
 private:
     static bool initialized;
     static uint8_t currentPwm;

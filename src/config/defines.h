@@ -28,6 +28,15 @@
 #define KEYA_NO_ACK 0
 #endif
 
+// CAN sniffer mode. When set, KeyaMotor::handler() logs every received CAN
+// frame (other than the regular heartbeat) over the UDP debug stream as
+// raw hex, including frames we do not normally recognize. Use with another
+// CAN master on the same bus (Keya ServoCAN tool, etc.) to reverse-engineer
+// proprietary commands the motor responds to.
+#ifndef KEYA_SNIFFER
+#define KEYA_SNIFFER 0
+#endif
+
 // Virtual WAS sourced from the Keya motor's encoder position. When 1, the
 // firmware skips ADS1115WAS and registers a shim that reads cumulative
 // degrees from the Keya heartbeat. Useful when there is no physical wheel-
