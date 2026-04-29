@@ -82,12 +82,12 @@ void parse() {
     bool steerButton      = (config.setting0 >> 6) & 0x01;
     Set.steer_switch_type = steerSwitch ? steer_switch_type_types::SWITCH : steerButton ? steer_switch_type_types::BUTTON : steer_switch_type_types::NONE;
 
-    //TODO:implement encoDer and pressure sensor
+    //TODO:implement encoder
     bool shaftEncoder  = (config.setting0 >> 7) & 0x01;
-    auto pulseCountMax = config.pulseCountMax;
+    Set.pulseCountMax  = config.pulseCountMax;
 // WAS Speed config_packet.was_speed
-    bool pressure_sensor = (config.setting1 >> 1) & 0x01;
-    bool current_sensor  = (config.setting1 >> 2) & 0x01;
+    Set.pressureSensor = (config.setting1 >> 1) & 0x01;
+    Set.currentSensor  = (config.setting1 >> 2) & 0x01;
     //TODO: implement switching IMU axis
     bool is_use_y_axis = (config.setting1 >> 3) & 0x01;
 }
@@ -110,6 +110,9 @@ void printSettings() {
     debugf("Steer Switch: %d", Set.steer_switch_type == steer_switch_type_types::SWITCH);
     debugf("Steer Button: %d", Set.steer_switch_type == steer_switch_type_types::BUTTON);
     debugf("Shaft Encoder: %d", Set.wasType == WASType::single);
+    debugf("Pressure Sensor: %d", Set.pressureSensor);
+    debugf("Current Sensor: %d", Set.currentSensor);
+    debugf("PulseCountMax: %d", Set.pulseCountMax);
     debug("################################");
 }
 

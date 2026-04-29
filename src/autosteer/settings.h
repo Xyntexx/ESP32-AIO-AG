@@ -47,6 +47,17 @@ struct Storage {
     WASType wasType;
     DriverType driverType;
     steer_switch_type_types steer_switch_type;
+
+    // Manual-override sensors (PGN 251 setting1 bits 1 & 2). When either is
+    // set, autosteer uses motor load (or analog sensor) crossing
+    // pulseCountMax to force-disengage. With KEYA_MOTOR=1 the load comes
+    // from heartbeat current; otherwise from the analog MOTOR_CURRENT_PIN.
+    bool pressureSensor;
+    bool currentSensor;
+
+    // Threshold (PGN 251 byte 6, "pulseCountMax"). Reused by Teensy/Keya
+    // forks as the overcurrent / pressure trip level.
+    uint8_t pulseCountMax;
 };
 
 // Global settings instance

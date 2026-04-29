@@ -19,10 +19,9 @@ int pulseCount       = 0; //TODO:IMPLEMENT ENCODER
 
 #if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
 // Latched override - once tripped, autosteer refuses to re-engage until
-// AOG drops guidance status (which clears the latch on the next disengage).
-// The Keya controller already filters its current reading internally
-// (through its current-loop PI regulator) so we use the raw heartbeat
-// value directly without additional smoothing.
+// the user releases the engage input. The Keya controller already filters
+// its current reading internally (through its current-loop PI regulator)
+// so we use the raw heartbeat value directly without additional smoothing.
 static bool overcurrentLatched = false;
 #endif
 
@@ -31,8 +30,12 @@ void handler() {
     bool swEnable = getSwSwitchStatus();
 
 #if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
-    // While engaged, watch for the override.
-    if (steerEnable && !overcurrentLatched) {
+    // Overcurrent override is gated on the AOG-side "Current sensor" or
+    // "Pressure sensor" steerConfig bit (PGN 251 setting1). If the user has
+    // neither enabled, this whole feature is silent. Honors the same bit
+    // the Teensy reference uses, so AOG's existing toggle works.
+    if (steerEnable && !overcurrentLatched
+            && (Set.currentSensor || Set.pressureSensor)) {
         uint16_t now_mA = hw::KeyaMotor::getCurrentMA();
         if (now_mA >= KEYA_OVERCURRENT_TRIP_MA) {
             errorf("Keya overcurrent override: %u mA >= %d mA - disengaging",
@@ -115,5 +118,10 @@ void handler() {
 // Get the combined steer switch state (physical button and software switch) TODO: what is correct operation? include sw switch?
 bool getSteerSwitchState() {
     return buttons::steerBntEnabled();
+}
+
+// Actual autosteer engagement state, including any firmware-side overrides.
+bool isEngaged() {
+    return steerEnable;
 }
 }

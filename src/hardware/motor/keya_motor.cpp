@@ -281,14 +281,30 @@ void KeyaMotor::handler() {
         //   [4..5] motor current (with symbol)
         //   [6..7] error code
         uint16_t errCode = ((uint16_t)msg.data[6] << 8) | msg.data[7];
-        // Current scaling matches the Teensy reference: signed byte 4 acts as
-        // sign, byte 5 magnitude * 20 yields milliamps.
-        uint16_t curMA;
-        if (msg.data[4] == 0xFF) {
-            curMA = (256 - msg.data[5]) * 20;
-        } else {
-            curMA = msg.data[5] * 20;
+        // Heartbeat current per manual sec 4.5.2: bytes [4..5] are a signed
+        // 16-bit value, byte 4 high, byte 5 low (big-endian). The MANUAL DOES
+        // NOT DOCUMENT THE UNIT. Earlier code (inherited from the lansalot
+        // Teensy fork) treated byte 4 as a sign byte and byte 5 magnitude * 20
+        // mA, which only matches an unsigned 0..5 A range and misinterprets
+        // anything larger. With the corrected parse below, "currentRaw" is
+        // the magnitude in whatever units the controller emits; map to mA via
+        // KEYA_CURRENT_RAW_PER_MA once empirically determined.
+        int16_t signedCurrent = (int16_t)(((uint16_t)msg.data[4] << 8) | msg.data[5]);
+        uint16_t currentRaw = (uint16_t)((signedCurrent < 0) ? -signedCurrent
+                                                             : signedCurrent);
+        uint16_t curMA = currentRaw * KEYA_CURRENT_RAW_PER_MA;
+
+#if KEYA_LOG_CURRENT_EVERY > 0
+        // Calibration log: print raw bytes + decoded values periodically so
+        // we can verify the unit scaling against actual measured current.
+        static uint16_t logCurrentCounter = 0;
+        if (++logCurrentCounter >= KEYA_LOG_CURRENT_EVERY) {
+            logCurrentCounter = 0;
+            infof("Keya cur: bytes[4..5]=%02X %02X signed=%d raw=%u curMA=%u",
+                  msg.data[4], msg.data[5], (int)signedCurrent,
+                  (unsigned)currentRaw, (unsigned)curMA);
         }
+#endif
 
         // Cumulative angle (Data0 high, Data1 low; 1 LSB = 1 deg, wraps at
         // 0xFFFF per manual sec 4.5.2). On the first frame, snapshot the

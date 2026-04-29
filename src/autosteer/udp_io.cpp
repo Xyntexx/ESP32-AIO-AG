@@ -350,7 +350,10 @@ void sendSteerData() {
     float actualSteerAngle = was::get_steering_angle();
     float heading = imu::get_heading();
     float roll = imu::get_roll();
-    bool steer_switch = buttons::steerBntEnabled();
+    // Report the actual autosteer engagement state to AOG (not just the raw
+    // button), so an internal force-disengage (overcurrent trip, fault, etc.)
+    // is visible on the GUI side and AOG knows we are no longer steering.
+    bool steer_switch = autosteer::isEngaged();
     bool work_switch = buttons::workBntEnabled();
     uint8_t pwmDisplay = motor::getCurrentPWM();
 

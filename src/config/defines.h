@@ -46,18 +46,39 @@
 #define KEYA_LISTEN_ONLY 0
 #endif
 
-// Overcurrent-based manual-override disengagement. When the smoothed motor
-// current crosses this threshold during an engaged session, autosteer
-// force-disengages and refuses to re-engage until AOG cycles guidanceStatus.
-// Mirrors the Teensy-Keya fork's PressureSensor / pulseCount override
-// pattern (Autosteer.ino sec 4.4) but uses the heartbeat current value
-// directly so no analog sensor is needed. 0 disables.
+// Conversion factor from the raw heartbeat current value (bytes 4-5, signed
+// int16 BE per manual sec 4.5.2) to milliamps. The manual does not document
+// the unit. Working hypothesis based on bench observation: 1 raw unit = 1 A,
+// so 17 A peak = raw 17, and KEYA_CURRENT_RAW_PER_MA = 1000.
 //
-// 6000 mA is roughly 3-4x typical autosteer current, well below the motor's
-// 17A max - generous enough that normal hard turns don't false-trigger but
-// catches a wheel-grab before the supply undervoltage trips.
+// To verify: enable KEYA_LOG_CURRENT_EVERY, stall the motor at a known load
+// (or just hold the wheel), and confirm the raw values you see line up.
+// Update this constant if the controller turns out to use a different scale.
+#ifndef KEYA_CURRENT_RAW_PER_MA
+#define KEYA_CURRENT_RAW_PER_MA 1000
+#endif
+
+// Periodic logging of raw heartbeat current bytes during engaged operation.
+// 0 = silent, N = log every Nth heartbeat (~50 Hz cadence so N=10 -> 5 Hz
+// log rate). Useful for calibrating KEYA_CURRENT_RAW_PER_MA.
+#ifndef KEYA_LOG_CURRENT_EVERY
+#define KEYA_LOG_CURRENT_EVERY 0
+#endif
+
+// Overcurrent-based manual-override disengagement. When the heartbeat motor
+// current crosses this threshold during an engaged session, autosteer
+// force-disengages and refuses to re-engage until the user releases the
+// engage input. Mirrors the Teensy-Keya fork's PressureSensor / pulseCount
+// override pattern (Autosteer.ino sec 4.4) but uses the heartbeat current
+// value directly so no analog sensor is needed. 0 disables.
+//
+// Bench observation: heartbeat resolution is 1 A per LSB. The motor's spec
+// is 10 A continuous / 17 A peak. We pick 12 A (12000 mA) as a default -
+// just above continuous so legitimate hard turns don't false-trigger, but
+// well below the motor's own 17 A internal trip so we disengage cleanly
+// before the motor faults itself.
 #ifndef KEYA_OVERCURRENT_TRIP_MA
-#define KEYA_OVERCURRENT_TRIP_MA 6000
+#define KEYA_OVERCURRENT_TRIP_MA 12000
 #endif
 
 // Virtual WAS sourced from the Keya motor's encoder position. When 1, the
