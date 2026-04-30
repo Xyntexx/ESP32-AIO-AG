@@ -57,6 +57,41 @@ bool configureGPS() {
     GPSSerial.begin(selected_baud, SERIAL_8N1, MAIN_GPS_RX_PIN, MAIN_GPS_TX_PIN);
     resp = mainGNSS.begin(GPSSerial, defaultMaxWait, false);
 
+    // Set the navigation update rate. RAM only - leaves the module's saved
+    // configuration intact, so the change reverts on power cycle (we just
+    // re-apply it next boot). AOG expects 10 Hz by default.
+    if (resp) {
+        if (mainGNSS.setNavigationFrequency(GPS_NAV_FREQ_HZ)) {
+            debugf("MAIN_GPS - navigation rate set to %d Hz", GPS_NAV_FREQ_HZ);
+        } else {
+            warningf("MAIN_GPS - failed to set navigation rate to %d Hz", GPS_NAV_FREQ_HZ);
+        }
+
+        // Pull and log the live configuration the u-blox is now running, so
+        // we can verify it matches what we requested + see what the user
+        // configured manually via u-center. NMEA message rates are per-port:
+        // we read UART1 (the port talking to us).
+        uint8_t  navFreqHz = mainGNSS.getNavigationFrequency();
+        uint16_t measRate  = mainGNSS.getMeasurementRate();   // ms between fixes
+        uint16_t navRate   = mainGNSS.getNavigationRate();    // cycles per fix
+        uint8_t  protoVer  = mainGNSS.getProtocolVersionHigh();
+        uint8_t  protoMin  = mainGNSS.getProtocolVersionLow();
+        info("---- MAIN_GPS configuration ----");
+        infof("  navFreq   : %u Hz", (unsigned)navFreqHz);
+        infof("  measRate  : %u ms",  (unsigned)measRate);
+        infof("  navRate   : %u cycles/fix", (unsigned)navRate);
+        infof("  protoVer  : %u.%02u", (unsigned)protoVer, (unsigned)protoMin);
+        // NMEA message rate per UART1 via VALGET (rate=0 means the message is off).
+        infof("  GGA(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GGA_UART1));
+        infof("  RMC(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_RMC_UART1));
+        infof("  VTG(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_VTG_UART1));
+        infof("  GSA(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GSA_UART1));
+        infof("  GSV(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GSV_UART1));
+        infof("  GLL(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GLL_UART1));
+        infof("  GST(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GST_UART1));
+        info("--------------------------------");
+    }
+
     if (GPS_DEFAULT_CONFIGURATION) {
         //we could configure the gps module here. Not used for dual antenna setups and custom configurations
         /*myGNSS.setNavigationFrequency(10);

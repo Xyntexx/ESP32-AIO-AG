@@ -162,6 +162,14 @@
 
 #define GPS_DEFAULT_CONFIGURATION false
 
+// Main GPS navigation rate in Hz. The u-blox is set to this on every boot
+// (RAM only - the module's permanent configuration is left alone). 10 Hz
+// is the standard AgOpenGPS rate. Range typically 1..25 depending on the
+// chipset and which constellations are enabled.
+#ifndef GPS_NAV_FREQ_HZ
+#define GPS_NAV_FREQ_HZ 10
+#endif
+
 #define BUTTONS_TASK_PRIORITY 6
 #define WAS_TASK_PRIORITY 4
 #define AUTOSTEER_TASK_PRIORITY 5
