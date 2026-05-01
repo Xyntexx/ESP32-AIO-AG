@@ -5,6 +5,7 @@
 #include "WebServer_ESP32_SC_W6100.h"
 #include "network/udp.h"
 #include "network/ota.h"
+#include "network/safe_mode.h"
 #include "../hardware/i2c_manager.h"
 #include "hardware/hardware.h"
 #include "tasks.h"
@@ -29,6 +30,15 @@ void setup() {
   // hw::init() can still be recovered remotely.
   initOTA();
 
+  // Crash-recovery hatch. If the previous boot ended in a panic / watchdog
+  // / brownout, or if the user sends a HALT packet in the next ~1.5s, skip
+  // hardware init and task creation entirely - sit in OTA-only loop so a
+  // fix can be pushed remotely without needing JTAG.
+  safe_mode::checkAtBoot();
+  if (safe_mode::active()) {
+    return; // loop() will run handleOTA() + heartbeat forever
+  }
+
   if (!hw::init()) {
     error("FATAL: Hardware initialization failed! Halted (OTA still active).");
     while(1) {
@@ -50,6 +60,12 @@ void setup() {
 
 void loop() {
   handleOTA();
+
+  if (safe_mode::active()) {
+    safe_mode::tickHeartbeat();
+    delay(10);
+    return;
+  }
 
   // Periodic stack monitoring (every 10 seconds)
   static unsigned long lastStackCheck = 0;
