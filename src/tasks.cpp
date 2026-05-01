@@ -4,7 +4,11 @@
 #include "autosteer/buttons.h"
 #include "gps/gps_module.h"
 #include "gps/gps_heading.h"
+#if KEYA_WAS
+#include "hardware/was/keya_was.h"
+#else
 #include "hardware/was/ads1115_was.h"
+#endif
 #include "hardware/imu/bno08x_imu.h"
 #if KEYA_MOTOR
 #include "hardware/motor/keya_motor.h"
@@ -17,12 +21,16 @@
 #endif
 #include "utils/log.h"
 
+#if !KEYA_WAS
 [[noreturn]] void was_task(void *pv_parameters) {
     for (;;) {
         hw::ADS1115WAS::handler();
         vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz update rate
     }
 }
+#endif
+// Under KEYA_WAS the WAS reading is pulled on demand from the Keya
+// heartbeat (updated by keya_task), so no dedicated WAS task is needed.
 
 [[noreturn]] void imu_task(void *pv_parameters) {
     for (;;) {
@@ -88,21 +96,26 @@
 
 bool create_tasks() {
     debug("Creating tasks...");
+    BaseType_t taskCreated;
+#if !KEYA_WAS
     debug("Creating WAS task...");
     TaskHandle_t wasTaskHandle = nullptr;
-    BaseType_t taskCreated = xTaskCreate(
+    taskCreated = xTaskCreate(
         was_task,
-        "was_task", 
+        "was_task",
         4096,
-        nullptr, 
-        WAS_TASK_PRIORITY, 
+        nullptr,
+        WAS_TASK_PRIORITY,
         &wasTaskHandle
     );
-    
+
     if (taskCreated != pdPASS || wasTaskHandle == nullptr) {
         error("Failed to create WAS task");
         return false;
     }
+#else
+    debug("WAS task skipped (KEYA_WAS=1, encoder is pulled from heartbeat)");
+#endif
 
     delay(100);
     debug("Creating IMU task...");
