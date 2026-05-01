@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <AsyncUDP.h>
+#include <Preferences.h>
 #include <esp_system.h>
 #include <string.h>
 
@@ -15,6 +16,20 @@ static constexpr uint16_t HALT_UDP_PORT       = 7779;
 static constexpr uint32_t HALT_WINDOW_MS      = 1500;
 static constexpr const char* HALT_MAGIC       = "HALT-AIO-AG";
 static constexpr size_t      HALT_MAGIC_LEN   = 11;
+
+// NVS-backed crash history. Lets the firmware survive a reboot while
+// keeping a running tally of *what* knocked it over - useful for
+// after-the-fact diagnosis when the user only sees the recovered
+// device. Counters bumped per-boot when the new reset reason is a
+// crash flavor; lastReason / lastUptimeMs replaced on every crash.
+static constexpr const char* NVS_NS         = "aioag_crash";
+static constexpr const char* NVS_PANIC      = "panic";
+static constexpr const char* NVS_TASK_WDT   = "tw";
+static constexpr const char* NVS_INT_WDT    = "iw";
+static constexpr const char* NVS_BROWNOUT   = "bo";
+static constexpr const char* NVS_OTHER_WDT  = "wd";
+static constexpr const char* NVS_LAST       = "last";
+static constexpr const char* NVS_BOOTS      = "boots";
 
 static bool g_active = false;
 
@@ -34,26 +49,72 @@ static const char* resetReasonStr(esp_reset_reason_t r) {
     }
 }
 
-static bool isCrashReason(esp_reset_reason_t r) {
-    return r == ESP_RST_PANIC
-        || r == ESP_RST_INT_WDT
-        || r == ESP_RST_TASK_WDT
-        || r == ESP_RST_WDT
-        || r == ESP_RST_BROWNOUT;
+// Map a reset reason to the NVS counter key for that flavor of crash,
+// or nullptr if the reason isn't a crash we track.
+static const char* crashCounterKey(esp_reset_reason_t r) {
+    switch (r) {
+        case ESP_RST_PANIC:    return NVS_PANIC;
+        case ESP_RST_TASK_WDT: return NVS_TASK_WDT;
+        case ESP_RST_INT_WDT:  return NVS_INT_WDT;
+        case ESP_RST_BROWNOUT: return NVS_BROWNOUT;
+        case ESP_RST_WDT:      return NVS_OTHER_WDT;
+        default:               return nullptr;
+    }
+}
+
+static void recordBootInNvs(esp_reset_reason_t reason) {
+    Preferences p;
+    if (!p.begin(NVS_NS, false)) {
+        warning("safe_mode: NVS open failed - crash trace disabled");
+        return;
+    }
+    p.putUInt(NVS_BOOTS, p.getUInt(NVS_BOOTS, 0) + 1);
+    const char* key = crashCounterKey(reason);
+    if (key) {
+        p.putUInt(key, p.getUInt(key, 0) + 1);
+        p.putUChar(NVS_LAST, (uint8_t)reason);
+    }
+    p.end();
+}
+
+static void logCrashHistory() {
+    Preferences p;
+    if (!p.begin(NVS_NS, true)) return;
+    uint32_t boots    = p.getUInt(NVS_BOOTS, 0);
+    uint32_t panic    = p.getUInt(NVS_PANIC, 0);
+    uint32_t taskWdt  = p.getUInt(NVS_TASK_WDT, 0);
+    uint32_t intWdt   = p.getUInt(NVS_INT_WDT, 0);
+    uint32_t brownout = p.getUInt(NVS_BROWNOUT, 0);
+    uint32_t otherWdt = p.getUInt(NVS_OTHER_WDT, 0);
+    uint8_t  lastR    = p.getUChar(NVS_LAST, (uint8_t)ESP_RST_UNKNOWN);
+    p.end();
+
+    uint32_t totalCrashes = panic + taskWdt + intWdt + brownout + otherWdt;
+    if (totalCrashes == 0) {
+        infof("Crash history: clean (%u boots logged)", (unsigned)boots);
+        return;
+    }
+    infof("Crash history: %u crashes / %u boots - panic=%u taskWdt=%u intWdt=%u brownout=%u otherWdt=%u, last=%s",
+          (unsigned)totalCrashes, (unsigned)boots,
+          (unsigned)panic, (unsigned)taskWdt, (unsigned)intWdt,
+          (unsigned)brownout, (unsigned)otherWdt,
+          resetReasonStr((esp_reset_reason_t)lastR));
 }
 
 void checkAtBoot() {
+    // Log the reset reason every boot - useful diagnostic on its own,
+    // even though we no longer act on it (a single transient brownout
+    // or panic shouldn't quarantine the device).
     esp_reset_reason_t reason = esp_reset_reason();
     infof("Reset reason: %s", resetReasonStr(reason));
 
-    if (isCrashReason(reason)) {
-        warning("Previous boot ended in a crash - engaging SAFE MODE");
-        g_active = true;
-    }
+    // Persist the boot to NVS and replay accumulated history. The
+    // counters are append-only across reboots and only ever zeroed if
+    // the user explicitly wipes NVS, so they're a long-running picture
+    // of what's been knocking the device over.
+    recordBootInNvs(reason);
+    logCrashHistory();
 
-    // Always offer the manual escape hatch, even on a clean boot. Lets
-    // the user pre-empt task creation if they suspect the next normal
-    // boot will wedge in a way the reset-reason check can't catch.
     infof("Send '%s' UDP to port %u within %lu ms to force safe mode",
           HALT_MAGIC, (unsigned)HALT_UDP_PORT, (unsigned long)HALT_WINDOW_MS);
 
@@ -76,12 +137,9 @@ void checkAtBoot() {
     }
     haltUdp.close();
 
-    if (halted && !g_active) {
+    if (halted) {
         warning("HALT packet received - engaging SAFE MODE");
         g_active = true;
-    }
-
-    if (g_active) {
         info("=========================================");
         info("  SAFE MODE: tasks suspended, OTA active ");
         info("  Flash a fix via OTA, then reset.       ");

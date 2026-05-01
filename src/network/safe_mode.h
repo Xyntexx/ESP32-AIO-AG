@@ -4,23 +4,20 @@
 namespace safe_mode {
 
 // Run the safe-mode probe. Call once during setup(), after Ethernet + UDP
-// logging + OTA are up but BEFORE hw::init() / create_tasks(). The probe
-// engages safe mode (suspending normal boot) when either of these is true:
+// logging + OTA are up but BEFORE hw::init() / create_tasks(). Listens
+// for a magic UDP packet ("HALT-AIO-AG") on port 7779 for a short window
+// (~1.5s); if seen, engages safe mode for the rest of this boot.
 //
-//   1) The previous reset reason looks like a crash (panic, task/int
-//      watchdog, brownout, generic WDT). Reboots from POWERON / EXT pin /
-//      software reset (e.g. a clean OTA finalize) are treated as healthy.
+// Safe mode skips hardware init, task creation, and AOG UDP listeners -
+// the device sits in the OTA-only handler loop forever. Recovery from a
+// boot loop is: watch the UDP log to confirm the device is in fact
+// rebooting, blast HALT-AIO-AG during the next boot's 1.5s window, then
+// OTA-flash a fix. Next reboot proceeds normally (no HALT seen).
 //
-//   2) A magic UDP packet ("HALT-AIO-AG") arrives on port 7777 within a
-//      ~1.5s window. Lets the user force safe mode at will - useful when
-//      the firmware wedges without producing a recognized reset reason
-//      (e.g. an I2C mutex starve that times out a task watchdog the
-//      firmware can't print before the reset).
-//
-// In safe mode the device stays in the OTA-only handler loop forever; no
-// hardware init, no tasks, no AOG UDP listeners. Recovery is: flash a fix
-// via OTA, reboot. The next reset reason will be ESP_RST_SW (clean) and
-// the firmware will resume normal boot.
+// We deliberately do NOT auto-engage on crash-flavored reset reasons -
+// a transient field event (brownout, cosmic-ray panic) shouldn't take
+// the device out of service. The 1.5s window is short enough to feel
+// like normal boot but long enough for a user-driven escape hatch.
 void checkAtBoot();
 
 // True if checkAtBoot() decided to engage safe mode.
