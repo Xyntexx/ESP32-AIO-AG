@@ -1,6 +1,7 @@
 #include "autosteer.h"
 #include "pid_controller.h"
 #include "buttons.h"
+#include "safety.h"
 #include "udp_io.h"
 #include "utils/log.h"
 #include "was.h"
@@ -26,6 +27,8 @@ static bool overcurrentLatched = false;
 #endif
 
 void handler() {
+    safety::noteAutosteerTick();
+
     bool hwEnable = buttons::steerBntEnabled();
     bool swEnable = getSwSwitchStatus();
 
