@@ -4,6 +4,7 @@
 #include "autosteer/autosteer.h"
 #include "WebServer_ESP32_SC_W6100.h"
 #include "network/udp.h"
+#include "network/udp_tx.h"
 #include "network/ota.h"
 #include "network/safe_mode.h"
 #include "../hardware/i2c_manager.h"
@@ -27,6 +28,11 @@ void setup() {
   initializeEthernet();
   debug("Ethernet initialized");
   initUDPLogging();
+
+  // Drainer for outbound UDP. Spawned before OTA / hw / tasks so the
+  // queue exists before anything tries to enqueue. Producers never
+  // touch AsyncUDP directly anymore - they push descriptors here.
+  udp_tx::init();
 
   // Bring OTA up before hardware init so a bad flash that hangs in
   // hw::init() can still be recovered remotely.

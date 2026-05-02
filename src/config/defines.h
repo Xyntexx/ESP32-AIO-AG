@@ -185,6 +185,18 @@
 #define HEADING_TASK_PRIORITY (10)
 #define KEYA_TASK_PRIORITY 3
 #define SIM_TASK_PRIORITY  4
+#define UDP_TX_TASK_PRIORITY 1
+
+// Outbound-UDP queue. Producers (autosteer / GPS / heading / sim) enqueue
+// here instead of calling AsyncUDP::writeTo() directly so a stalled W6100
+// or wedged lwIP path can never block the 1 kHz autosteer/motor loop or
+// the lwIP RX callback. The drainer task owns all real sends.
+//
+// MAX_PAYLOAD covers the largest current packet (NMEA buffer is 256;
+// AOG packets are < 32). DEPTH=32 holds ~1 s of autosteer chatter plus
+// a typical NMEA burst, with a single 8 KB static allocation.
+#define UDP_TX_QUEUE_DEPTH   32
+#define UDP_TX_MAX_PAYLOAD   256
 
 
 #define AgOpenGPS_UDP_PORT 9999
