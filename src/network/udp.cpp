@@ -1,6 +1,7 @@
 #include "udp.h"
 #include "../autosteer/udp_io.h"
 #include "../gps/gps_module.h"
+#include "udp_tx.h"
 
 #include <AsyncUDP.h>
 #include <WiFi.h>
@@ -49,17 +50,28 @@ bool broadcastUDPPacket(AsyncUDP& udp, uint16_t remotePort, const uint8_t* data,
     return udp.writeTo(data, len, ETH.broadcastIP(), remotePort) > 0;
 }
 
-// UDP packet sending function for autosteer
-static bool sendUDPPacketFromAutosteer(const uint8_t* data, size_t len) {
+// Drainer-side senders. The udp_tx task calls these to do the actual
+// AsyncUDP::writeTo() - if the W6100/lwIP path wedges, it's the drainer
+// that blocks here, never the producer.
+static bool drainAutosteerToUdp(const uint8_t* data, size_t len) {
     return broadcastUDPPacket(autosteer_udp, AgOpenGPS_UDP_PORT, data, len);
 }
-
-// UDP packet sending function for GPS
-static bool sendUDPPacketFromGPS(const uint8_t* data, size_t len) {
+static bool drainGpsToUdp(const uint8_t* data, size_t len) {
     return broadcastUDPPacket(gps_udp, AgOpenGPS_UDP_PORT, data, len);
 }
 
+// Producer-facing send functions. These run in the caller's context
+// (1 kHz autosteer, lwIP RX callback, GPS UART loop) and only enqueue;
+// the drainer task does the network I/O.
+static bool sendUDPPacketFromAutosteer(const uint8_t* data, size_t len) {
+    return udp_tx::enqueue(udp_tx::Channel::Autosteer, data, len);
+}
+static bool sendUDPPacketFromGPS(const uint8_t* data, size_t len) {
+    return udp_tx::enqueue(udp_tx::Channel::GPS, data, len);
+}
+
 bool init_autosteer_udp() {
+    udp_tx::registerChannel(udp_tx::Channel::Autosteer, drainAutosteerToUdp);
     autosteer_udp.listen(STEER_UDP_PORT);
     debugf("Listening for autosteer UDP on port %d", STEER_UDP_PORT);
     initAutosteerCommunication(sendUDPPacketFromAutosteer, getIP());
@@ -72,6 +84,7 @@ bool init_autosteer_udp() {
 }
 
 bool init_gps_udp() {
+    udp_tx::registerChannel(udp_tx::Channel::GPS, drainGpsToUdp);
     gps_udp.listen(GPS_UDP_PORT);
     debugf("Listening for GPS UDP on port %d", GPS_UDP_PORT);
 #if SIMULATOR
