@@ -15,7 +15,9 @@ void setup() {
   initLogging();
 
   // Log system startup
-  info("System Startup - Version " + String(FIRMWARE_VERSION) + " (" + String(BUILD_DATE) + ")");
+  info("System Startup - Version " + String(FIRMWARE_VERSION)
+       + " rev " + String(GIT_REV)
+       + " (" + String(BUILD_DATE) + ")");
   LOGSerial.println("//////////////////////////");
   LOGSerial.println("/////  ESP32-AIO-AG  /////");
   LOGSerial.println("//////////////////////////");
