@@ -18,6 +18,13 @@
 #define FIRMWARE_VERSION "0.0.1"
 #define BUILD_DATE __DATE__ " " __TIME__
 
+// GIT_REV is injected as a quoted string by scripts/inject_git_rev.py at
+// build time (the short SHA, with a "-dirty" suffix when the working tree
+// has uncommitted changes). Fall back when building outside a git tree.
+#ifndef GIT_REV
+#define GIT_REV "unknown"
+#endif
+
 #define LOGSerial USBSerial
 
 #define GPSSerial Serial2
