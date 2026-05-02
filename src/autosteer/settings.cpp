@@ -38,11 +38,16 @@ static bool validateSettings(SteerSettings& s, SteerConfig& c) {
         valid = false;
     }
 
-    // Validate Ackerman fix (prevent division issues, reasonable range)
-    if (c.pulseCountMax < MIN_ACKERMAN_FIX || c.pulseCountMax > MAX_ACKERMAN_FIX) {
+    // Validate Ackerman fix (prevent division issues, reasonable range).
+    // Note: this used to check c.pulseCountMax (PGN 251 byte 6) but ackerman
+    // actually lives in s.ackermanFix (PGN 252 byte 12). The old check
+    // clobbered pulseCountMax with 100 every boot, breaking any AOG-set
+    // override threshold and producing the "Ackerman fix out of range"
+    // warning that fired on every fresh EEPROM regardless of state.
+    if (s.ackermanFix < MIN_ACKERMAN_FIX || s.ackermanFix > MAX_ACKERMAN_FIX) {
         warningf("Ackerman fix out of range (%d-%d), using %d",
                  MIN_ACKERMAN_FIX, MAX_ACKERMAN_FIX, DEFAULT_ACKERMAN_FIX);
-        c.pulseCountMax = DEFAULT_ACKERMAN_FIX;
+        s.ackermanFix = DEFAULT_ACKERMAN_FIX;
         valid = false;
     }
 
@@ -82,12 +87,12 @@ void parse() {
     bool steerButton      = (config.setting0 >> 6) & 0x01;
     Set.steer_switch_type = steerSwitch ? steer_switch_type_types::SWITCH : steerButton ? steer_switch_type_types::BUTTON : steer_switch_type_types::NONE;
 
-    //TODO:implement encoDer and pressure sensor
+    //TODO:implement encoder
     bool shaftEncoder  = (config.setting0 >> 7) & 0x01;
-    auto pulseCountMax = config.pulseCountMax;
+    Set.pulseCountMax  = config.pulseCountMax;
 // WAS Speed config_packet.was_speed
-    bool pressure_sensor = (config.setting1 >> 1) & 0x01;
-    bool current_sensor  = (config.setting1 >> 2) & 0x01;
+    Set.pressureSensor = (config.setting1 >> 1) & 0x01;
+    Set.currentSensor  = (config.setting1 >> 2) & 0x01;
     //TODO: implement switching IMU axis
     bool is_use_y_axis = (config.setting1 >> 3) & 0x01;
 }
@@ -110,6 +115,9 @@ void printSettings() {
     debugf("Steer Switch: %d", Set.steer_switch_type == steer_switch_type_types::SWITCH);
     debugf("Steer Button: %d", Set.steer_switch_type == steer_switch_type_types::BUTTON);
     debugf("Shaft Encoder: %d", Set.wasType == WASType::single);
+    debugf("Pressure Sensor: %d", Set.pressureSensor);
+    debugf("Current Sensor: %d", Set.currentSensor);
+    debugf("PulseCountMax: %d", Set.pulseCountMax);
     debug("################################");
 }
 

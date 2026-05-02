@@ -34,6 +34,11 @@
 #define W6100_MOSI_GPIO 17
 #define W6100_INT_GPIO 6
 
+// CAN bus pins (Keya motor). The CAN transceiver's D (driver/TX-in) connects
+// to CAN_TX_PIN; its R (receiver/RX-out) connects to CAN_RX_PIN.
+#define CAN_TX_PIN 21
+#define CAN_RX_PIN 47
+
 //#define LED1_GPIO 41
 //#define LED2_GPIO 42
 

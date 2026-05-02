@@ -4,16 +4,33 @@
 #include "autosteer/buttons.h"
 #include "gps/gps_module.h"
 #include "gps/gps_heading.h"
+#if KEYA_WAS
+#include "hardware/was/keya_was.h"
+#else
 #include "hardware/was/ads1115_was.h"
+#endif
 #include "hardware/imu/bno08x_imu.h"
+#if KEYA_MOTOR
+#include "hardware/motor/keya_motor.h"
+#endif
+#if SIMULATOR
+#include "sim/bicycle_sim.h"
+#endif
+#if TEST_MODE
+#include "test/hw_test.h"
+#endif
 #include "utils/log.h"
 
+#if !KEYA_WAS
 [[noreturn]] void was_task(void *pv_parameters) {
     for (;;) {
         hw::ADS1115WAS::handler();
         vTaskDelay(pdMS_TO_TICKS(20)); // 50Hz update rate
     }
 }
+#endif
+// Under KEYA_WAS the WAS reading is pulled on demand from the Keya
+// heartbeat (updated by keya_task), so no dedicated WAS task is needed.
 
 [[noreturn]] void imu_task(void *pv_parameters) {
     for (;;) {
@@ -50,24 +67,55 @@
     }
 }
 
+#if KEYA_MOTOR
+[[noreturn]] void keya_task(void *pv_parameters) {
+    for (;;) {
+        hw::KeyaMotor::handler();
+        // handler() blocks up to ~50ms inside twai_receive when idle, so a
+        // short delay here is enough to yield without losing heartbeats.
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+#endif
+
+#if SIMULATOR
+[[noreturn]] void sim_task(void *pv_parameters) {
+    TickType_t lastWake = xTaskGetTickCount();
+    int nmeaCounter = 0;
+    for (;;) {
+        sim::tick();
+        if (++nmeaCounter >= SIM_NMEA_DIVIDER) {
+            nmeaCounter = 0;
+            sim::emitNMEA();
+        }
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(SIM_TICK_MS));
+    }
+}
+#endif
+
 
 bool create_tasks() {
     debug("Creating tasks...");
+    BaseType_t taskCreated;
+#if !KEYA_WAS
     debug("Creating WAS task...");
     TaskHandle_t wasTaskHandle = nullptr;
-    BaseType_t taskCreated = xTaskCreate(
+    taskCreated = xTaskCreate(
         was_task,
-        "was_task", 
+        "was_task",
         4096,
-        nullptr, 
-        WAS_TASK_PRIORITY, 
+        nullptr,
+        WAS_TASK_PRIORITY,
         &wasTaskHandle
     );
-    
+
     if (taskCreated != pdPASS || wasTaskHandle == nullptr) {
         error("Failed to create WAS task");
         return false;
     }
+#else
+    debug("WAS task skipped (KEYA_WAS=1, encoder is pulled from heartbeat)");
+#endif
 
     delay(100);
     debug("Creating IMU task...");
@@ -119,6 +167,23 @@ bool create_tasks() {
         return false;
     }
 
+#if SIMULATOR
+    delay(100);
+    debug("Creating SIM task...");
+    TaskHandle_t simTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        sim_task,
+        "sim_task",
+        4096,
+        nullptr,
+        SIM_TASK_PRIORITY,
+        &simTaskHandle
+    );
+    if (taskCreated != pdPASS || simTaskHandle == nullptr) {
+        error("Failed to create SIM task");
+        return false;
+    }
+#else
     delay(100);
     debug("Creating MAIN_GPS task...");
     TaskHandle_t gpsTaskHandle = nullptr;
@@ -134,6 +199,7 @@ bool create_tasks() {
         error("Failed to create GPS task");
         return false;
     }
+#endif
 #if GPS_HEADING
     delay(100);
     debug("Creating HEADING_GPS task...");
@@ -149,6 +215,42 @@ bool create_tasks() {
 
     if (!taskCreated) {
         error("Failed to create HEADING_GPS task");
+        return false;
+    }
+#endif
+
+#if KEYA_MOTOR
+    delay(100);
+    debug("Creating Keya CAN task...");
+    TaskHandle_t keyaTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        keya_task,
+        "keya_task",
+        4096,
+        nullptr,
+        KEYA_TASK_PRIORITY,
+        &keyaTaskHandle
+    );
+    if (taskCreated != pdPASS || keyaTaskHandle == nullptr) {
+        error("Failed to create Keya task");
+        return false;
+    }
+#endif
+
+#if TEST_MODE
+    delay(100);
+    debug("Creating HW test task...");
+    TaskHandle_t testTaskHandle = nullptr;
+    taskCreated = xTaskCreate(
+        hw::test::task,
+        "hw_test",
+        4096,
+        nullptr,
+        2,                  // low priority - it's just a logger
+        &testTaskHandle
+    );
+    if (taskCreated != pdPASS || testTaskHandle == nullptr) {
+        error("Failed to create HW test task");
         return false;
     }
 #endif

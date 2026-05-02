@@ -9,6 +9,9 @@
 #include "gps/gps_heading.h"
 #include "utils/log.h"
 #include "w6100/esp32_sc_w6100.h"
+#if SIMULATOR
+#include "sim/bicycle_sim.h"
+#endif
 
 AsyncUDP autosteer_udp;
 AsyncUDP gps_udp;
@@ -71,15 +74,20 @@ bool init_autosteer_udp() {
 bool init_gps_udp() {
     gps_udp.listen(GPS_UDP_PORT);
     debugf("Listening for GPS UDP on port %d", GPS_UDP_PORT);
+#if SIMULATOR
+    sim::setUdpSender(sendUDPPacketFromGPS);
+    info("GPS UDP wired to bicycle simulator (real GPS UART not used)");
+#else
     gps_main::initGpsCommunication(sendUDPPacketFromGPS, getIP());
-#if GPS_HEADING
+  #if GPS_HEADING
     gps_heading::initGpsCommunication(sendUDPPacketFromGPS, getIP());
-#endif
+  #endif
     gps_udp.onPacket([](AsyncUDPPacket packet) {
             // Convert IPAddress to ip_address for GPS
             ip_address sourceIP = ipAddressToIpAddress(packet.remoteIP());
             gps_main::process_udp_message(packet.data(), packet.length(), sourceIP);
         });
+#endif
     return true;
 }
 

@@ -9,6 +9,9 @@
 #include "motor.h"
 #include "settings.h"
 #include "utils/log.h"
+#if KEYA_MOTOR
+#include "hardware/motor/keya_motor.h"
+#endif
 
 // Global variables
 uint32_t lastDataReceived                  = 0;
@@ -207,12 +210,28 @@ void processReceivedPacket(const uint8_t *data, size_t len, ip_address sourceIP)
 
                 // Extract and convert values
                 gpsSpeed           = static_cast<float>(steerData->speed) * 0.1f;
-                guidanceStatus     = steerData->status & 0x01;
+                uint8_t newGuidanceStatus = steerData->status & 0x01;
 
                 // Decode steering angle (int16_t encoded as uint16_t * scale factor)
                 // Protocol encodes angles as int16 * 100
                 int16_t raw_angle = static_cast<int16_t>(steerData->steerAngle);
-                steerAngleSetPoint = static_cast<float>(raw_angle) * ANGLE_SCALE_FACTOR;
+                float newSetpoint = static_cast<float>(raw_angle) * ANGLE_SCALE_FACTOR;
+
+                // Log transitions of guidanceStatus and "significant" setpoint
+                // changes (>0.1 deg) so we can see what AOG is asking for
+                // without spamming the debug stream every 100ms.
+                if (newGuidanceStatus != guidanceStatus) {
+                    infof("AOG: guidanceStatus -> %u (setpoint=%.2f deg)",
+                          (unsigned)newGuidanceStatus, (double)newSetpoint);
+                }
+                if (fabsf(newSetpoint - steerAngleSetPoint) > 0.1f) {
+                    debugf("AOG: setpoint=%.2f deg (status=%u, speed=%.1f)",
+                           (double)newSetpoint, (unsigned)newGuidanceStatus,
+                           (double)gpsSpeed);
+                }
+
+                guidanceStatus     = newGuidanceStatus;
+                steerAngleSetPoint = newSetpoint;
 
                 // Validate angle is within expected range
                 if (steerAngleSetPoint < MIN_STEER_ANGLE_DEG || steerAngleSetPoint > MAX_STEER_ANGLE_DEG) {
@@ -331,10 +350,28 @@ void sendSteerData() {
     float actualSteerAngle = was::get_steering_angle();
     float heading = imu::get_heading();
     float roll = imu::get_roll();
-    bool steer_switch = buttons::steerBntEnabled();
+    // Report the actual autosteer engagement state to AOG (not just the raw
+    // button), so an internal force-disengage (overcurrent trip, fault, etc.)
+    // is visible on the GUI side and AOG knows we are no longer steering.
+    bool steer_switch = autosteer::isEngaged();
     bool work_switch = buttons::workBntEnabled();
     uint8_t pwmDisplay = motor::getCurrentPWM();
+
+    // FROM_AUTOSTEER2 byte 5 ("sensorValue" / AOG mc.sensorData). On Keya
+    // builds, scale the live motor current so the motor's 17 A peak rating
+    // lands at AOG's 90% display (byte ~230). 1 byte = KEYA_AOG_MA_PER_BYTE
+    // mA. AOG truncates display via floor(byte * 100/255), so this scaling
+    // gives the user a meaningful percentage where 90% means "at peak".
+    // On non-Keya builds, fall back to the raw WAS reading like upstream
+    // AOG firmware (used for WAS calibration views in some forks).
+#if KEYA_MOTOR
+    uint16_t curMA = hw::KeyaMotor::getCurrentMA();
+    uint32_t scaled = ((uint32_t)curMA + KEYA_AOG_MA_PER_BYTE / 2)
+                      / KEYA_AOG_MA_PER_BYTE;
+    uint8_t sensorValue = (scaled > 255) ? 255 : (uint8_t)scaled;
+#else
     uint8_t sensorValue = was::get_wheel_angle_sensor_raw();
+#endif
 
     debugf("Sending response: A=%.2f, R=%d, H=%.1f, R=%.1f, S=%d, pwm=%d",
            actualSteerAngle, was::get_raw_steering_position(), heading, roll, steer_switch, pwmDisplay);
