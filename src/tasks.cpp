@@ -2,6 +2,7 @@
 
 #include "autosteer/autosteer.h"
 #include "autosteer/buttons.h"
+#include "autosteer/safety.h"
 #include "gps/gps_module.h"
 #include "gps/gps_heading.h"
 #if KEYA_WAS
@@ -97,6 +98,16 @@
 bool create_tasks() {
     debug("Creating tasks...");
     BaseType_t taskCreated;
+
+    // Safety task first - it monitors autosteer-handler heartbeat and
+    // forces motor stop on stale guidance / wedged control loop. Highest
+    // priority of anything that touches the motor (above buttons=6,
+    // autosteer=5).
+    if (!safety::init()) {
+        error("Failed to create safety task");
+        return false;
+    }
+
 #if !KEYA_WAS
     debug("Creating WAS task...");
     TaskHandle_t wasTaskHandle = nullptr;

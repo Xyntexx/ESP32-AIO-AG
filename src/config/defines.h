@@ -187,6 +187,21 @@
 #define SIM_TASK_PRIORITY  4
 #define UDP_TX_TASK_PRIORITY 1
 
+// Safety task. Higher priority than every task that can drive the
+// motor (buttons=6, autosteer=5) so it can preempt them and force a
+// stop if any safety condition fails. Lower than GPS/heading=10 so
+// GPS forwarding doesn't get starved by the safety check.
+#define SAFETY_TASK_PRIORITY 7
+// How often the safety task wakes up to recheck conditions. 20 ms =
+// 50 Hz, well above the 200 ms / 500 ms staleness thresholds it
+// monitors and cheap on CPU.
+#define SAFETY_TICK_MS 20
+// Stop the motor if the autosteer handler hasn't bumped its tick
+// counter in this many ms. Autosteer runs at 1 kHz so 100 ms is a
+// generous margin against legitimate scheduling jitter while still
+// catching a wedged control path quickly.
+#define SAFETY_AUTOSTEER_STALE_MS 100
+
 // Outbound-UDP queue. Producers (autosteer / GPS / heading / sim) enqueue
 // here instead of calling AsyncUDP::writeTo() directly so a stalled W6100
 // or wedged lwIP path can never block the 1 kHz autosteer/motor loop or
