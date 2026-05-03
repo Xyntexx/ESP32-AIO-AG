@@ -11,11 +11,14 @@
 namespace safe_mode {
 
 // 7777 is the UDP log broadcast port - already bound by UDPStream so we
-// can't listen on it. Use a dedicated port for the HALT escape hatch.
+// can't listen on it. Use a dedicated port for the boot-time control
+// channel (HALT to engage safe mode, WIPE-CRASH to zero the crash NVS).
 static constexpr uint16_t HALT_UDP_PORT       = 7779;
 static constexpr uint32_t HALT_WINDOW_MS      = 1500;
 static constexpr const char* HALT_MAGIC       = "HALT-AIO-AG";
 static constexpr size_t      HALT_MAGIC_LEN   = 11;
+static constexpr const char* WIPE_MAGIC       = "WIPE-CRASH-AIO-AG";
+static constexpr size_t      WIPE_MAGIC_LEN   = 17;
 
 // NVS-backed crash history. Lets the firmware survive a reboot while
 // keeping a running tally of *what* knocked it over - useful for
@@ -60,6 +63,21 @@ static const char* crashCounterKey(esp_reset_reason_t r) {
         case ESP_RST_WDT:      return NVS_OTHER_WDT;
         default:               return nullptr;
     }
+}
+
+// Erase the entire crash-history NVS namespace. Triggered by a UDP
+// magic at boot - lets the user zero out a session full of accumulated
+// brownouts/panics without needing a full NVS wipe (which would also
+// blow away Settings).
+static void wipeCrashNvs() {
+    Preferences p;
+    if (!p.begin(NVS_NS, false)) {
+        warning("safe_mode: NVS open failed for wipe");
+        return;
+    }
+    p.clear();
+    p.end();
+    info("Crash history NVS namespace wiped");
 }
 
 static void recordBootInNvs(esp_reset_reason_t reason) {
@@ -108,34 +126,50 @@ void checkAtBoot() {
     esp_reset_reason_t reason = esp_reset_reason();
     infof("Reset reason: %s", resetReasonStr(reason));
 
-    // Persist the boot to NVS and replay accumulated history. The
-    // counters are append-only across reboots and only ever zeroed if
-    // the user explicitly wipes NVS, so they're a long-running picture
-    // of what's been knocking the device over.
-    recordBootInNvs(reason);
-    logCrashHistory();
+    infof("Send '%s' or '%s' UDP to port %u within %lu ms",
+          HALT_MAGIC, WIPE_MAGIC,
+          (unsigned)HALT_UDP_PORT, (unsigned long)HALT_WINDOW_MS);
 
-    infof("Send '%s' UDP to port %u within %lu ms to force safe mode",
-          HALT_MAGIC, (unsigned)HALT_UDP_PORT, (unsigned long)HALT_WINDOW_MS);
-
-    AsyncUDP haltUdp;
+    AsyncUDP ctrlUdp;
     volatile bool halted = false;
-    if (haltUdp.listen(HALT_UDP_PORT)) {
-        haltUdp.onPacket([&halted](AsyncUDPPacket pkt) {
-            if (pkt.length() >= HALT_MAGIC_LEN
-                && memcmp(pkt.data(), HALT_MAGIC, HALT_MAGIC_LEN) == 0) {
+    volatile bool wipe   = false;
+    if (ctrlUdp.listen(HALT_UDP_PORT)) {
+        ctrlUdp.onPacket([&halted, &wipe](AsyncUDPPacket pkt) {
+            const uint8_t* d = pkt.data();
+            size_t n = pkt.length();
+            if (n >= HALT_MAGIC_LEN
+                && memcmp(d, HALT_MAGIC, HALT_MAGIC_LEN) == 0) {
                 halted = true;
+            } else if (n >= WIPE_MAGIC_LEN
+                && memcmp(d, WIPE_MAGIC, WIPE_MAGIC_LEN) == 0) {
+                wipe = true;
             }
         });
     } else {
-        warning("safe_mode: failed to bind HALT listener");
+        warning("safe_mode: failed to bind control listener");
     }
 
+    // Always wait the full window so both magics have a chance to land,
+    // even if the user wants to wipe AND engage safe mode in one shot.
     uint32_t deadline = millis() + HALT_WINDOW_MS;
-    while ((int32_t)(deadline - millis()) > 0 && !halted) {
+    while ((int32_t)(deadline - millis()) > 0) {
         delay(20);
     }
-    haltUdp.close();
+    ctrlUdp.close();
+
+    // Apply wipe BEFORE recording this boot, so the post-wipe history
+    // shows the current boot as boot #1 rather than a stale carry-over.
+    if (wipe) {
+        warning("WIPE-CRASH packet received - clearing crash NVS");
+        wipeCrashNvs();
+    }
+
+    // Persist the boot to NVS and replay accumulated history. The
+    // counters are append-only across reboots and only ever zeroed by
+    // an explicit WIPE-CRASH magic - they're a long-running picture
+    // of what's been knocking the device over.
+    recordBootInNvs(reason);
+    logCrashHistory();
 
     if (halted) {
         warning("HALT packet received - engaging SAFE MODE");
