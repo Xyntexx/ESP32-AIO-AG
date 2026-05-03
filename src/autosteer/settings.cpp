@@ -112,8 +112,11 @@ void printSettings() {
     debugf("Single Input WAS: %d", Set.wasType == WASType::single);
     debugf("Is Cytron: %d", Set.driverType == DriverType::cytron);
     debugf("Is Danfoss: %d", Set.driverType == DriverType::danfoss);
-    debugf("Steer Switch: %d", Set.steer_switch_type == steer_switch_type_types::SWITCH);
-    debugf("Steer Button: %d", Set.steer_switch_type == steer_switch_type_types::BUTTON);
+    const char* sw_type =
+        Set.steer_switch_type == steer_switch_type_types::SWITCH ? "SWITCH" :
+        Set.steer_switch_type == steer_switch_type_types::BUTTON ? "BUTTON" :
+        "NONE";
+    debugf("Steer Switch Type: %s", sw_type);
     debugf("Shaft Encoder: %d", Set.wasType == WASType::single);
     debugf("Pressure Sensor: %d", Set.pressureSensor);
     debugf("Current Sensor: %d", Set.currentSensor);

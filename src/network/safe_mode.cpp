@@ -12,13 +12,21 @@ namespace safe_mode {
 
 // 7777 is the UDP log broadcast port - already bound by UDPStream so we
 // can't listen on it. Use a dedicated port for the boot-time control
-// channel (HALT to engage safe mode, WIPE-CRASH to zero the crash NVS).
+// channel (HALT to engage safe mode, WIPE-CRASH to zero the crash NVS,
+// REBOOT for runtime restart).
 static constexpr uint16_t HALT_UDP_PORT       = 7779;
 static constexpr uint32_t HALT_WINDOW_MS      = 1500;
 static constexpr const char* HALT_MAGIC       = "HALT-AIO-AG";
 static constexpr size_t      HALT_MAGIC_LEN   = 11;
 static constexpr const char* WIPE_MAGIC       = "WIPE-CRASH-AIO-AG";
 static constexpr size_t      WIPE_MAGIC_LEN   = 17;
+static constexpr const char* REBOOT_MAGIC     = "REBOOT-AIO-AG";
+static constexpr size_t      REBOOT_MAGIC_LEN = 13;
+
+// Always-on responder for runtime control (reboot, etc). Distinct from
+// the boot-window listener so REBOOT works after System ready, when the
+// boot-window listener has long since closed.
+static AsyncUDP s_runtimeUdp;
 
 // NVS-backed crash history. Lets the firmware survive a reboot while
 // keeping a running tally of *what* knocked it over - useful for
@@ -183,6 +191,28 @@ void checkAtBoot() {
 
 bool active() {
     return g_active;
+}
+
+bool initRuntimeListener() {
+    if (!s_runtimeUdp.listen(HALT_UDP_PORT)) {
+        warning("safe_mode: failed to bind runtime listener");
+        return false;
+    }
+    s_runtimeUdp.onPacket([](AsyncUDPPacket pkt) {
+        const uint8_t* d = pkt.data();
+        size_t n = pkt.length();
+        if (n >= REBOOT_MAGIC_LEN
+            && memcmp(d, REBOOT_MAGIC, REBOOT_MAGIC_LEN) == 0) {
+            warning("REBOOT packet received - restarting in 100 ms");
+            // Small delay so the warning makes it onto the UDP log before
+            // the network stack tears down.
+            delay(100);
+            esp_restart();
+        }
+    });
+    infof("safe_mode: runtime listener on UDP %u (REBOOT-AIO-AG)",
+          (unsigned)HALT_UDP_PORT);
+    return true;
 }
 
 void tickHeartbeat() {

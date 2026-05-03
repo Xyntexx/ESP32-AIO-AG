@@ -8,6 +8,7 @@
 
 static unsigned long otaInitMs = 0;
 static bool fwConfirmed = false;
+static volatile bool otaActive = false;
 
 void initOTA() {
     ArduinoOTA.setHostname(OTA_HOSTNAME);
@@ -15,11 +16,13 @@ void initOTA() {
     ArduinoOTA.setPort(OTA_PORT);
 
     ArduinoOTA.onStart([]() {
+        otaActive = true;
         const char* type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
         infof("OTA: start updating %s", type);
     });
 
     ArduinoOTA.onEnd([]() {
+        otaActive = false;
         info("OTA: update complete, rebooting...");
     });
 
@@ -35,6 +38,7 @@ void initOTA() {
     });
 
     ArduinoOTA.onError([](ota_error_t err) {
+        otaActive = false;
         const char* msg = "unknown";
         switch (err) {
             case OTA_AUTH_ERROR:    msg = "auth failed";    break;
@@ -72,4 +76,8 @@ void handleOTA() {
         }
         fwConfirmed = true;
     }
+}
+
+bool otaInProgress() {
+    return otaActive;
 }

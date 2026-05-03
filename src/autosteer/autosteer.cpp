@@ -92,7 +92,19 @@ void handler() {
 #endif
 
     if (steerEnable != prevSteerEnable) {
-        debugf("Steer enable state changed: %s", steerEnable ? "enabled" : "disabled");
+        // Include the inputs that drove the decision so the log is
+        // self-explanatory when a transition does or doesn't make sense.
+        // Reading getSwSwitchStatus and overcurrentLatched here is cheap
+        // and only happens on transitions.
+#if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
+        infof("Steer enable -> %s (hwEnable=%d, swEnable=%d, overcurrentLatched=%d)",
+              steerEnable ? "enabled" : "disabled",
+              hwEnable ? 1 : 0, swEnable ? 1 : 0, overcurrentLatched ? 1 : 0);
+#else
+        infof("Steer enable -> %s (hwEnable=%d, swEnable=%d)",
+              steerEnable ? "enabled" : "disabled",
+              hwEnable ? 1 : 0, swEnable ? 1 : 0);
+#endif
 #if KEYA_MOTOR
         if (steerEnable) {
             // Engaging - start a fresh peak window so we can see the

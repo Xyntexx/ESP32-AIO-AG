@@ -27,6 +27,12 @@ bool active();
 // rate-limits so it can be called every loop iteration.
 void tickHeartbeat();
 
+// Bring up the always-on runtime control listener on UDP 7779. After
+// boot, accepts 'REBOOT-AIO-AG' to esp_restart() the device. Call once
+// from setup() after Ethernet is up. Independent of the boot-window
+// listener inside checkAtBoot().
+bool initRuntimeListener();
+
 } // namespace safe_mode
 
 #endif // SAFE_MODE_H

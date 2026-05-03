@@ -151,7 +151,9 @@ bool create_tasks() {
     taskCreated = xTaskCreate(
         buttons_task,
         "buttons_task",
-        1024,
+        4096,    // 1024 was too small once buttons::handler started
+                 // logging via infof - vsnprintf overflowed and panicked
+                 // on the first transition. 4096 matches the other tasks.
         nullptr,
         BUTTONS_TASK_PRIORITY,
         &buttonsTaskHandle
