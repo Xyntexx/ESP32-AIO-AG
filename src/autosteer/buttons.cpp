@@ -11,7 +11,6 @@ bool inited = false;
 bool prev_momentary_state = false;
 bool steer_enable         = false;
 bool work_enable          = false;
-bool sw_switch_valid      = false;
 
 bool init(const ButtonsInterface hw) {
     hw_interface = hw;
@@ -64,15 +63,12 @@ void handler() {
             break;
 
         case steer_switch_type_types::NONE:
-            // No physical switch - use software switch when valid guidance data is available
-            if (!guidancePacketValid()) {
-                steer_enable    = false;
-                sw_switch_valid = false;
-            } else if (sw_switch_valid) {
-                steer_enable = getSwSwitchStatus();
-            } else if (!getSwSwitchStatus()) {
-                sw_switch_valid = true;
-            }
+            // No physical switch - track AOG's software switch directly.
+            // Matches the Teensy reference: when AOG sends guidanceStatus=1
+            // we engage immediately on the next valid steer-data packet, no
+            // off-then-on toggle dance required. Stale guidance (>WATCHDOG_TIMEOUT
+            // since last PGN 254) disables.
+            steer_enable = guidancePacketValid() && getSwSwitchStatus();
             break;
 
         default:
