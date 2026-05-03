@@ -67,7 +67,13 @@ void handler() {
     }
 #endif
 
-    if (hwEnable && swEnable
+    // Engage is driven by the configured button source alone. For
+    // SWITCH/BUTTON types the physical input is the master; for NONE,
+    // buttons::handler() already folds AOG's software switch into
+    // hwEnable. We deliberately do NOT also require swEnable here -
+    // a user with a real switch shouldn't have to coordinate AOG's
+    // software toggle to engage.
+    if (hwEnable
 #if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
             && !overcurrentLatched
 #endif
@@ -78,12 +84,11 @@ void handler() {
     }
 
 #if KEYA_MOTOR && KEYA_OVERCURRENT_TRIP_MA > 0
-    // Clear the latch on any deliberate user disengage - either dropping the
-    // AOG software switch OR releasing the physical steer switch/button. That
-    // way the user can re-arm after a fault from whichever input they normally
-    // use, regardless of the configured steer_switch_type. The latch survives
-    // a single engaged session, then clears.
-    if (!hwEnable || !swEnable) overcurrentLatched = false;
+    // Clear the latch on any deliberate user disengage. hwEnable is the
+    // composite engage signal (physical switch in SWITCH/BUTTON modes,
+    // AOG sw switch in NONE mode), so dropping it covers all the user
+    // input paths in a single check.
+    if (!hwEnable) overcurrentLatched = false;
 #endif
 
     if (steerEnable != prevSteerEnable) {
