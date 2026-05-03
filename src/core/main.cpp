@@ -1,3 +1,5 @@
+#include <esp_system.h>
+
 #include "../config/defines.h"
 #include "../utils/log.h"
 #include "network/ethernet.h"
@@ -47,12 +49,26 @@ void setup() {
     return; // loop() will run handleOTA() + heartbeat forever
   }
 
+  // Always-on REBOOT-AIO-AG listener. Bound after the boot-window probe
+  // closes its own listener on the same port.
+  safe_mode::initRuntimeListener();
+
   if (!hw::init()) {
-    error("FATAL: Hardware initialization failed! Halted (OTA still active).");
-    while(1) {
+    // Don't halt forever on a transient init failure (GPS module slow
+    // to wake, brief I2C glitch, etc). Keep OTA serviceable for 5 s
+    // then auto-restart - that gives a remote operator a window to
+    // push a fix while not leaving the device wedged on its own.
+    // If an OTA upload is actively in progress at the deadline, hold
+    // the loop open until it finishes (otherwise we'd kill the upload).
+    error("FATAL: Hardware initialization failed - 5 s OTA window then auto-restart");
+    uint32_t deadline = millis() + 5000;
+    while ((int32_t)(deadline - millis()) > 0 || otaInProgress()) {
       handleOTA();
       delay(10);
     }
+    info("Restarting...");
+    delay(50);
+    esp_restart();
   }
   debug("Hardware initialized");
 

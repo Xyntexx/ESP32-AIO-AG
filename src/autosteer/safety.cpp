@@ -24,7 +24,11 @@ volatile uint32_t s_lastTickMs      = 0;
 volatile uint32_t s_stops           = 0;
 
 StaticTask_t       s_taskCb;
-StackType_t        s_taskStack[2048];
+// 2048 bytes was not enough - warningf's vsnprintf path overflowed the
+// stack on the first reason-change log line and smashed the return
+// address (decoded coredump showed safety task DoubleException with
+// PC=0x1). 4096 matches the other working tasks.
+StackType_t        s_taskStack[4096];
 
 constexpr uint32_t TICK_MS                = SAFETY_TICK_MS;
 constexpr uint32_t AUTOSTEER_STALE_MS     = SAFETY_AUTOSTEER_STALE_MS;
