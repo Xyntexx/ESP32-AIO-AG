@@ -67,6 +67,37 @@ bool configureGPS() {
             warningf("MAIN_GPS - failed to set navigation rate to %d Hz", GPS_NAV_FREQ_HZ);
         }
 
+        // Constellation config (RAM layer, re-applied every boot — same
+        // philosophy as the nav rate above). Kept in firmware so the active
+        // constellations are reproducible via a FW update. See GPS_ENABLE_*
+        // in defines.h for the rationale (notably BeiDou off for clean 10 Hz
+        // RTK-fixed on the F9P-04B). Batched into one VALSET so the GNSS
+        // subsystem restarts once, not per key.
+        mainGNSS.newCfgValset(VAL_LAYER_RAM);
+        mainGNSS.addCfgValset8(UBLOX_CFG_SIGNAL_GPS_ENA,  GPS_ENABLE_GPS);
+        mainGNSS.addCfgValset8(UBLOX_CFG_SIGNAL_GAL_ENA,  GPS_ENABLE_GALILEO);
+        mainGNSS.addCfgValset8(UBLOX_CFG_SIGNAL_GLO_ENA,  GPS_ENABLE_GLONASS);
+        mainGNSS.addCfgValset8(UBLOX_CFG_SIGNAL_BDS_ENA,  GPS_ENABLE_BEIDOU);
+        mainGNSS.addCfgValset8(UBLOX_CFG_SIGNAL_SBAS_ENA, GPS_ENABLE_SBAS);
+        mainGNSS.addCfgValset8(UBLOX_CFG_SIGNAL_QZSS_ENA, GPS_ENABLE_QZSS);
+        if (mainGNSS.sendCfgValset()) {
+            debugf("MAIN_GPS - constellations set (GPS=%d GAL=%d GLO=%d BDS=%d SBAS=%d QZSS=%d)",
+                   GPS_ENABLE_GPS, GPS_ENABLE_GALILEO, GPS_ENABLE_GLONASS,
+                   GPS_ENABLE_BEIDOU, GPS_ENABLE_SBAS, GPS_ENABLE_QZSS);
+        } else {
+            warning("MAIN_GPS - failed to set constellation config");
+        }
+
+        // Enable the GST sentence on UART1. GST carries the per-fix position
+        // error estimate (lat/lon std-dev in metres) — without it, downstream
+        // accuracy has to be inferred from HDOP. rate=1 => output every nav
+        // epoch. RAM layer, re-applied each boot like the rest.
+        if (mainGNSS.setVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GST_UART1, 1, VAL_LAYER_RAM)) {
+            debug("MAIN_GPS - GST enabled on UART1 (per-fix accuracy in metres)");
+        } else {
+            warning("MAIN_GPS - failed to enable GST on UART1");
+        }
+
         // Pull and log the live configuration the u-blox is now running, so
         // we can verify it matches what we requested + see what the user
         // configured manually via u-center. NMEA message rates are per-port:
@@ -89,6 +120,14 @@ bool configureGPS() {
         infof("  GSV(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GSV_UART1));
         infof("  GLL(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GLL_UART1));
         infof("  GST(UART1): %u", (unsigned)mainGNSS.getVal8(UBLOX_CFG_MSGOUT_NMEA_ID_GST_UART1));
+        // Active constellations (1 = enabled) — verify the config above took.
+        infof("  GPS=%u GAL=%u GLO=%u BDS=%u SBAS=%u QZSS=%u",
+              (unsigned)mainGNSS.getVal8(UBLOX_CFG_SIGNAL_GPS_ENA),
+              (unsigned)mainGNSS.getVal8(UBLOX_CFG_SIGNAL_GAL_ENA),
+              (unsigned)mainGNSS.getVal8(UBLOX_CFG_SIGNAL_GLO_ENA),
+              (unsigned)mainGNSS.getVal8(UBLOX_CFG_SIGNAL_BDS_ENA),
+              (unsigned)mainGNSS.getVal8(UBLOX_CFG_SIGNAL_SBAS_ENA),
+              (unsigned)mainGNSS.getVal8(UBLOX_CFG_SIGNAL_QZSS_ENA));
         info("--------------------------------");
     }
 
@@ -155,6 +194,13 @@ int buffer_pos = 0; // Initialize buffer position
 void handler() {
     // Check if there's data coming from the serial port
     if (gpsConnected && udp_send_func != nullptr) {
+        // Drain ALL bytes currently available, forwarding every complete
+        // sentence. Previously this returned after a single sentence, so the
+        // task (which then vTaskDelay(1)s) could only emit ~1 sentence/ms. At
+        // 10 Hz with multi-constellation NMEA (~18 sentences arriving in a
+        // burst every 100 ms), that backlog overran the UART driver FIFO and
+        // silently dropped whole fixes — the app-level buffer never filled, so
+        // no overflow was logged. Draining the burst in one pass fixes it.
         while (GPSSerial.available()) {
             char c = GPSSerial.read();
 
@@ -162,7 +208,7 @@ void handler() {
             if (buffer_pos >= buffer_size - 1) {
                 error("GPS buffer overflow, resetting buffer");
                 buffer_pos = 0;
-                break;
+                continue;
             }
 
             buffer[buffer_pos++] = c;
@@ -171,7 +217,8 @@ void handler() {
             if (c == '\n') {
                 udp_send_func(buffer, buffer_pos);
                 buffer_pos = 0;
-                break; // Process one sentence per handler call
+                // keep draining: do NOT break — clear the whole burst so the
+                // UART FIFO can't overrun before the next handler() tick.
             }
         }
     }

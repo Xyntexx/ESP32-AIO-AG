@@ -177,6 +177,37 @@
 #define GPS_NAV_FREQ_HZ 10
 #endif
 
+// GNSS constellation enable/disable, applied at boot (RAM layer) so the config
+// lives in firmware and is reproducible via a FW update — not left to whatever
+// was last saved in the module via u-center.
+//
+// Why BeiDou is off: on the ZED-F9P-04B, sustaining 10 Hz *RTK-fixed* with all
+// four constellations dual-band (~37 sats) exceeds the nav-engine compute
+// budget, so it silently skips ~5% of epochs (~9.5 Hz). Disabling BeiDou (the
+// lowest-value constellation at European/high latitudes) restores a clean,
+// verified 10.000 Hz across all fix types. GPS+Galileo+GLONASS (all dual-band,
+// ~29 sats) remains ample for robust RTK. SBAS stays on as a free EGNOS
+// fallback (negligible load); QZSS is not visible at these latitudes.
+// Set any of these to 0/1 and re-flash to change the active constellations.
+#ifndef GPS_ENABLE_GPS
+#define GPS_ENABLE_GPS     1
+#endif
+#ifndef GPS_ENABLE_GALILEO
+#define GPS_ENABLE_GALILEO 1
+#endif
+#ifndef GPS_ENABLE_GLONASS
+#define GPS_ENABLE_GLONASS 1
+#endif
+#ifndef GPS_ENABLE_BEIDOU
+#define GPS_ENABLE_BEIDOU  0
+#endif
+#ifndef GPS_ENABLE_SBAS
+#define GPS_ENABLE_SBAS    1
+#endif
+#ifndef GPS_ENABLE_QZSS
+#define GPS_ENABLE_QZSS    0
+#endif
+
 #define BUTTONS_TASK_PRIORITY 6
 #define WAS_TASK_PRIORITY 4
 #define AUTOSTEER_TASK_PRIORITY 5
